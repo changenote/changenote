@@ -77,6 +77,7 @@ For root and nested Go modules, see the [Go release guide](go.md), including v2+
 | `pyproject.toml` | `project.version` or `tool.poetry.version` |
 | `Cargo.toml` | `package.version` |
 | `package.json` | Top-level `version` |
+| `lakefile.toml` | Top-level `version` |
 | `*.xcconfig` | One literal `MARKETING_VERSION` assignment |
 | Other filenames, including `VERSION` | Plain-text stable SemVer string |
 
@@ -87,6 +88,11 @@ selected field is updated. An unused Poetry version stays unchanged. An invalid
 versions are not supported, even with an explicit Poetry version. This includes
 `project.dynamic` arrays that contain `"version"`. Inherited Cargo workspace
 versions are not supported.
+
+Lake configurations require an explicit top-level stable SemVer `version` string;
+changenote does not use Lake's implicit `0.0.0` default. It does not parse
+`lakefile.lean`. Use a separate `VERSION` file for Lean configuration files.
+See the [Lean 4 release guide](lean.md) for setup and tag conventions.
 
 TOML comments and unrelated fields are preserved. JSON updates replace only the
 top-level version value token. Every other byte is preserved, including
@@ -187,6 +193,11 @@ If another Poetry package locks the changed package as a path dependency, update
 that lockfile with Poetry separately.
 An existing `uv.lock` still triggers uv synchronization, including for a Poetry
 version source.
+
+Lake package-version changes do not require dependency resolution. changenote
+leaves `lake-manifest.json` and `lean-toolchain` unchanged and does not run Lake.
+The `version` field in `lake-manifest.json` identifies its file format, not the
+package release.
 
 Keep only one Node.js lockfile in each owning directory.
 Multiple supported lockfiles, or a supported lockfile beside `yarn.lock`, `npm-shrinkwrap.json`, or `bun.lockb`, fail before writes.

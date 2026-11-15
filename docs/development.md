@@ -96,6 +96,18 @@ uv run --no-project --with poetry==2.5.1 \
 Poetry 2.5.1 was verified. Check that the output does not contain
 `Skipping real poetry test`.
 
+The real Lake test loads a changed `lakefile.toml` with the installed Lake and
+checks its package version. It is skipped when Lake is missing. With Lean and
+Lake installed, run:
+
+```sh
+cargo test --locked -p changenote-core --test manifest_versions real_lake -- --show-output
+```
+
+Lean 4.35.0 and its bundled Lake were verified. Check that the output does not
+contain `Skipping real Lake test`. The CLI tests also verify version updates
+with no Lean or Lake executable in `PATH`.
+
 To install from this checkout, run `cargo install --locked --path crates/changenote`.
 Registry installation remains `cargo install changenote --locked`.
 

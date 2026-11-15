@@ -63,6 +63,11 @@ fn init_adopts_existing_sources_without_changing_bytes() {
             "pyproject.toml",
             "[project]\nname = 'pkg'\nversion = '1.2.3'\n",
         ),
+        ("lakefile.toml", "# Lake\nname = 'pkg'\nversion = '1.2.3'\n"),
+        (
+            "packages/lean/lakefile.toml",
+            "version = \"1.2.3\" # keep\n",
+        ),
         ("VERSION", "  1.2.3\n"),
         ("packages/sdk/Cargo.toml", "[package]\nversion = '1.2.3'\n"),
     ] {

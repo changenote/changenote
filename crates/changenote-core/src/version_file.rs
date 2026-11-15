@@ -33,10 +33,12 @@ impl VersionFile {
                 span: json_value::version_span(&content)?,
                 content: content.clone(),
             },
-            Some(name @ ("Cargo.toml" | "pyproject.toml")) => {
+            Some(name @ ("Cargo.toml" | "pyproject.toml" | "lakefile.toml")) => {
                 let document = content.parse::<DocumentMut>()?;
                 let version_path: &'static [&'static str] = if name == "Cargo.toml" {
                     &["package", "version"]
+                } else if name == "lakefile.toml" {
+                    &["version"]
                 } else {
                     ensure!(
                         !document

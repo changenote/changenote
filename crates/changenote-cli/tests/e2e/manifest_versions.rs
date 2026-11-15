@@ -115,6 +115,69 @@ fn init_adopts_poetry_and_releases_without_a_package_manager() {
 }
 
 #[test]
+fn lake_release_needs_no_runtime_and_preserves_toolchain_and_dependencies() {
+    let dir = tempfile::tempdir().expect("create Lake test directory");
+    let before = "# Lake\nname = 'pkg'\nversion = \"1.2.3\" # release\n\n[[require]]\nname = 'other'\nversion = '1.2.3'\n";
+    fs::write(dir.path().join("lakefile.toml"), before).expect("write Lake configuration");
+    let sentinels = [
+        ("lean-toolchain", "leanprover/lean4:v4.35.0\n"),
+        (
+            "lake-manifest.json",
+            "{\"version\":\"1.3.0\",\"packages\":[]}\n",
+        ),
+    ];
+    for (path, content) in sentinels {
+        fs::write(dir.path().join(path), content).expect("write Lake sentinel");
+    }
+    let empty_path = dir.path().join("bin");
+    fs::create_dir(&empty_path).expect("create empty PATH directory");
+    for args in [
+        vec!["init", "--name", "pkg", "--version-file", "lakefile.toml"],
+        vec![
+            "add",
+            "change",
+            "--package",
+            "pkg",
+            "--bump",
+            "minor",
+            "--message",
+            "New feature",
+        ],
+        vec!["status"],
+        vec!["doctor"],
+        vec!["version"],
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_changenote"))
+            .current_dir(dir.path())
+            .env("PATH", &empty_path)
+            .args(&args)
+            .output()
+            .expect("run changenote without Lean or Lake");
+        assert!(
+            output.status.success(),
+            "changenote {args:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join("lakefile.toml")).expect("read Lake configuration"),
+            if args == ["version"] {
+                before.replacen("\"1.2.3\"", "\"1.3.0\"", 1)
+            } else {
+                before.to_owned()
+            }
+        );
+        for (path, content) in sentinels {
+            assert_eq!(
+                fs::read_to_string(dir.path().join(path)).expect("read Lake sentinel"),
+                content
+            );
+        }
+    }
+    assert!(!dir.path().join("VERSION").exists());
+    assert!(!dir.path().join(".changenote/change.md").exists());
+}
+
+#[test]
 fn tag_validates_manifest_version() {
     let dir = project("Cargo.toml", "[package]\nversion = '1.2.3'\n");
     git(dir.path(), &["init", "--initial-branch=main"]);

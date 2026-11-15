@@ -23,6 +23,7 @@ nav = [
     { "GitHub Actions" = "https://github.com/changenote/action/blob/main/docs/github-actions.md" },
     { "Language Guides" = [
       { "Go Modules" = "go.md" },
+      { "Lean 4 Packages" = "lean.md" },
       { "Swift Packages and Apple Apps" = "swift.md" },
     ] },
   ] },
