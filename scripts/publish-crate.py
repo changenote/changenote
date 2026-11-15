@@ -2,11 +2,12 @@
 
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+
+from package_crate import run_cargo
 
 
 def publish(root: Path, version: str) -> None:
@@ -34,9 +35,9 @@ def publish(root: Path, version: str) -> None:
     if not os.environ.get("CARGO_REGISTRY_TOKEN"):
         raise ValueError("CARGO_REGISTRY_TOKEN is required to publish to crates.io")
     # Legacy VERSION releases have build-only Cargo version changes in this checkout.
-    subprocess.run(
+    run_cargo(
+        root,
         [
-            "cargo",
             "publish",
             "--locked",
             "--registry",
@@ -45,8 +46,6 @@ def publish(root: Path, version: str) -> None:
             "changenote",
             "--allow-dirty",
         ],
-        cwd=root,
-        check=True,
     )
 
 

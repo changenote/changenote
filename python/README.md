@@ -2,7 +2,7 @@
 
 Distribute the Rust changenote CLI as a Python package. The package uses [maturin](https://www.maturin.rs/) with `bindings = "bin"`, like [uv's Python distribution](https://github.com/astral-sh/uv/tree/main/python/uv).
 
-The PyPI distribution, executable, and Python module names are `changenote`. The module is in `python/changenote`, with package metadata in root `pyproject.toml`; Python does not use a uv workspace. Python wrapper changes use the `changenote` release name in `.changenote/config.json`; the wrapper has no independent version file or release plan. CLI logic stays in `crates/changenote/src/`, the only member of the root Cargo workspace.
+The PyPI distribution, executable, and Python module names are `changenote`. The module is in `python/changenote`, with package metadata in root `pyproject.toml`; Python does not use a uv workspace. Python wrapper changes use the `changenote` release name in `.changenote/config.json`; the wrapper has no independent version file or release plan. The root Cargo workspace has four members. `crates/changenote/src/` contains the public entry points. Release logic is in private `crates/changenote-core/`, and command handling is in private `crates/changenote-cli/`. The bundled skill is in private `crates/changenote-skill/`. The private crates are not published separately.
 
 ## Run with uvx
 
@@ -35,11 +35,11 @@ uv run --locked python -m unittest discover -s python/tests
 
 The optional Python module runner finds the installed binary and passes arguments, the working directory, and the environment to it. It preserves the executable's exit code. It does not download a binary or use a system executable from `PATH`.
 
-uv cache keys include both Cargo manifests, the member sources and resources, and the canonical root inputs for the copied package resources.
-The skill is stored only in `crates/changenote/SKILL.md` and needs no synchronization; run `changenote skill` to retrieve it.
+uv cache keys include all Cargo manifests, workspace member sources and resources, and the canonical root inputs for the copied package resources.
+The skill is stored only in `crates/changenote-skill/SKILL.md` and needs no synchronization; run `changenote skill` to retrieve it.
 For the other package resources, see [package resources](../docs/development.md#package-resources).
 Changes to these files cause local package rebuilds.
-`uv build` produces a source distribution and builds a wheel from it, including the Rust package sources and bundled skill.
+`uv build` produces a source distribution and builds a wheel from it, including all four Rust packages and the bundled skill.
 
 The Python distribution uses `dynamic = ["version"]`: maturin reads the version directly from `crates/changenote/Cargo.toml`, selected by `tool.maturin.manifest-path`. The wheel metadata and the packaged CLI's `--version` therefore use the same Rust crate version; do not add a separate Python manifest version.
 

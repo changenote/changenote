@@ -46,7 +46,10 @@ class CrateResources(unittest.TestCase):
                         self.assertTrue(path.is_file(), "Target is absent from the crate")
 
     def test_skill_has_one_package_local_source(self):
-        self.assertTrue((ROOT / "crates/changenote/SKILL.md").is_file())
+        self.assertEqual(list((ROOT / "crates").rglob("SKILL.md")), [
+            ROOT / "crates/changenote-skill/SKILL.md",
+        ])
+        self.assertFalse((ROOT / "crates/changenote/SKILL.md").exists())
         self.assertFalse((ROOT / "skills").exists())
         self.assertFalse((ROOT / "crates/changenote/skills").exists())
         self.assertFalse((ROOT / "scripts/sync-crate-resources.py").exists())
@@ -54,19 +57,45 @@ class CrateResources(unittest.TestCase):
     def test_workspace_and_package_include_required_inputs(self):
         workspace = tomllib.loads((ROOT / "Cargo.toml").read_text())
         self.assertNotIn("package", workspace)
-        self.assertEqual(workspace["workspace"]["members"], ["crates/changenote"])
+        self.assertEqual(workspace["workspace"]["members"], [
+            "crates/changenote", "crates/changenote-core", "crates/changenote-cli",
+            "crates/changenote-skill",
+        ])
+        for name in ("changenote-core", "changenote-cli", "changenote-skill"):
+            private = tomllib.loads((ROOT / "crates" / name / "Cargo.toml").read_text())
+            self.assertIs(private["package"]["publish"], False)
+            self.assertEqual(private["package"]["name"], name)
         manifest = tomllib.loads((ROOT / "crates/changenote/Cargo.toml").read_text())
         self.assertEqual(manifest["package"]["name"], "changenote")
         self.assertIsInstance(manifest["package"]["version"], str)
         included = manifest["package"]["include"]
-        for name in (*RESOURCE_COPIES, "SKILL.md", "src/main.rs",
-                     "tests/fixtures/planning/provenance/fixture/.changenote/config.json"):
+        self.assertIn("SKILL.md", included)  # Added by standalone Cargo assembly.
+        for name in (*RESOURCE_COPIES, "src/main.rs", "tests/cli.rs",
+                     "tests/public_api.rs", "tests/resources.rs"):
             with self.subTest(name=name):
                 self.assertTrue(any(fnmatch.fnmatchcase(name, pattern) for pattern in included))
                 self.assertTrue((ROOT / "crates/changenote" / name).is_file())
+        cli = tomllib.loads((ROOT / "crates/changenote-cli/Cargo.toml").read_text())
+        fixture = "tests/e2e/fixtures/planning/provenance/fixture/.changenote/config.json"
+        self.assertTrue(any(fnmatch.fnmatchcase(fixture, pattern)
+                            for pattern in cli["package"]["include"]))
+        self.assertTrue((ROOT / "crates/changenote-cli" / fixture).is_file())
         python = tomllib.loads((ROOT / "pyproject.toml").read_text())
         self.assertEqual(python["tool"]["maturin"]["manifest-path"],
                          "crates/changenote/Cargo.toml")
+        cache_files = [entry["file"] for entry in python["tool"]["uv"]["cache-keys"]]
+        for member in workspace["workspace"]["members"]:
+            self.assertIn(f"{member}/**/*", cache_files)
+
+    def test_public_tests_only_host_the_cli_suite_and_check_public_contracts(self):
+        directory = ROOT / "crates/changenote/tests"
+        self.assertEqual({path.name for path in directory.iterdir()}, {
+            "cli.rs", "public_api.rs", "resources.rs",
+        })
+        harness = (directory / "cli.rs").read_text()
+        self.assertLessEqual(len(harness.splitlines()), 6)
+        self.assertIn("../../changenote-cli/tests/e2e/mod.rs", harness)
+        self.assertTrue((ROOT / "crates/changenote-cli/tests/e2e/mod.rs").is_file())
 
 
 if __name__ == "__main__":

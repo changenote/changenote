@@ -95,7 +95,7 @@ class Metadata(unittest.TestCase):
         ):
             self.assertIn(gate, rust)
         archive = next(step for step in jobs["check"]["steps"] if step.get("name") == "Check crate archive")
-        self.assertIn("cargo package --locked -p changenote", archive["run"])
+        self.assertIn("uv run --no-project python scripts/package_crate.py package --locked -p changenote", archive["run"])
         self.assertIn("tar -xzf target/package/changenote-*.crate", archive["run"])
         self.assertIn('cargo test --locked --manifest-path "$archive"/changenote-*/Cargo.toml', archive["run"])
         distribution = [step.get("run") for step in jobs["python"]["steps"]]
@@ -114,7 +114,7 @@ class Metadata(unittest.TestCase):
             if hook["id"] == "end-of-file-fixer"
         )
         exclusion = re.compile(hook["exclude"])
-        fixtures = list((ROOT / "crates/changenote/tests/fixtures/planning").glob(
+        fixtures = list((ROOT / "crates/changenote-cli/tests/e2e/fixtures/planning").glob(
             "*/expected-*-CHANGELOG.md"
         ))
         self.assertTrue(fixtures)
@@ -123,10 +123,10 @@ class Metadata(unittest.TestCase):
                 self.assertRegex(fixture.relative_to(ROOT).as_posix(), exclusion)
                 self.assertTrue(fixture.read_bytes().endswith(b"\n\n"))
         for path in ("README.md", "crates/changenote/README.md",
-                     "crates/changenote/tests/fixtures/planning/provenance/fixture/.changenote/a.md"):
+                     "crates/changenote-cli/tests/e2e/fixtures/planning/provenance/fixture/.changenote/a.md"):
             self.assertIsNone(exclusion.search(path))
         self.assertIn(
-            "crates/changenote/tests/fixtures/planning/**/expected-*-CHANGELOG.md -text whitespace=-blank-at-eof",
+            "crates/changenote-cli/tests/e2e/fixtures/planning/**/expected-*-CHANGELOG.md -text whitespace=-blank-at-eof",
             (ROOT / ".gitattributes").read_text(),
         )
 

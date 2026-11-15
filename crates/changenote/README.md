@@ -204,7 +204,7 @@ The content is embedded at build time and matches the installed CLI version; it 
 
 | Skill | Purpose |
 | --- | --- |
-| [changenote](https://github.com/changenote/changenote/blob/main/crates/changenote/SKILL.md) | CLI change notes, configuration, release plans, versions, and tags, plus GitHub Actions setup, checks, release PRs, publication, and recovery. |
+| [changenote](https://github.com/changenote/changenote/blob/main/crates/changenote-skill/SKILL.md) | CLI change notes, configuration, release plans, versions, and tags, plus GitHub Actions setup, checks, release PRs, publication, and recovery. |
 
 The `changenote` skill replaces `changenote-manage-releases`, `changenote-cli`, and `changenote-action`.
 Update installed skills and exact-name references to `changenote`.
@@ -229,7 +229,10 @@ Primary and additional version files must contain explicit stable SemVer version
 
 ## Development
 
-This repository uses one Cargo workspace with one Rust package in `crates/changenote/`.
+This repository uses one Cargo workspace with four Rust packages.
+`crates/changenote/` contains the public entry points, `crates/changenote-core/` contains release logic, and `crates/changenote-cli/` contains command handling.
+`crates/changenote-skill/` contains the bundled agent skill.
+The core, CLI, and skill packages are private and are not published separately.
 The Python distribution packages the same executable and does not use a uv workspace.
 See the [development guide](https://github.com/changenote/changenote/blob/main/docs/development.md) for the layout, test commands, and maintainer release procedures.
 

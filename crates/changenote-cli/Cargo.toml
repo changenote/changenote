@@ -1,0 +1,16 @@
+[package]
+name = "changenote-cli"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "MIT"
+# Keep hidden planning fixtures in Python source distributions.
+include = ["src/**", "tests/**"]
+
+[dependencies]
+changenote-core = { path = "../changenote-core" }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+semver = { version = "1", features = ["serde"] }
+serde_json = { version = "1", features = ["preserve_order", "raw_value"] }

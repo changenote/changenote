@@ -1,0 +1,301 @@
+use changenote::Bump;
+use changenote_core as changenote;
+use semver::Version;
+use serde_json::Map;
+use std::fs;
+use std::path::Path;
+use tempfile::TempDir;
+
+fn project(filename: &str, content: &str) -> TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    fs::create_dir(dir.path().join(".changenote")).unwrap();
+    fs::write(dir.path().join(filename), content).unwrap();
+    fs::write(
+        dir.path().join(".changenote/config.json"),
+        serde_json::json!({"packages": {"pkg": {"path": ".", "version_file": filename}}})
+            .to_string(),
+    )
+    .unwrap();
+    dir
+}
+
+fn note(root: &Path) {
+    changenote::add(
+        root,
+        "change",
+        vec!["pkg".into()],
+        Bump::Minor,
+        "New feature",
+    )
+    .unwrap();
+}
+
+#[test]
+fn json_replaces_only_the_top_level_version_token() {
+    for (before, old_token) in [
+        (
+            "{\"version\":\"1.2.3\",\"nested\":{\"version\":\"1.2.3\"}}",
+            "\"1.2.3\"",
+        ),
+        (
+            "{\r\n\t\"version\" : \"1.2.3\",\r\n\t\"text\":\"escaped \\\"version\\\"\"\r\n}",
+            "\"1.2.3\"",
+        ),
+        (
+            "{\n    \"version\": \"1.2.3\",\n    \"n\": 1.000e+400\n}\n",
+            "\"1.2.3\"",
+        ),
+        (
+            r#"{"ver\u0073ion": "1.2.\u0033", "nested": {"version": "1.2.3"}}"#,
+            r#""1.2.\u0033""#,
+        ),
+    ] {
+        let dir = project("package.json", before);
+        note(dir.path());
+        changenote::version(dir.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(dir.path().join("package.json")).unwrap(),
+            before.replacen(old_token, "\"1.3.0\"", 1)
+        );
+    }
+}
+
+#[test]
+fn rejects_duplicate_version_and_non_json_without_writes() {
+    for before in [
+        r#"{"version":"1.2.3","version":"2.0.0"}"#,
+        r#"{"version":"1.2.3","ver\u0073ion":"1.2.3"}"#,
+        "{\"version\":\"1.2.3\",}",
+        "{\"version\":\"1.2.3\" /* comment */}",
+    ] {
+        let dir = project("package.json", before);
+        fs::write(
+            dir.path().join(".changenote/fix.md"),
+            "---\npkg: patch\n---\n\nFix",
+        )
+        .unwrap();
+        assert!(changenote::status(dir.path()).is_err());
+        assert!(changenote::version(dir.path()).is_err());
+        assert_eq!(
+            fs::read_to_string(dir.path().join("package.json")).unwrap(),
+            before
+        );
+        assert!(dir.path().join(".changenote/fix.md").exists());
+        assert!(!dir.path().join("CHANGELOG.md").exists());
+    }
+}
+
+#[test]
+fn reads_and_updates_manifest_versions() {
+    for (filename, before, after) in [
+        (
+            "Cargo.toml",
+            "# Package\n[package]\nname = 'pkg'\nversion = \"1.2.3\" # release\n\n[dependencies]\nother = '1.2.3'\n",
+            "# Package\n[package]\nname = 'pkg'\nversion = \"1.3.0\" # release\n\n[dependencies]\nother = '1.2.3'\n",
+        ),
+        (
+            "pyproject.toml",
+            "[project]\nname = 'pkg'\nversion = \"1.2.3\" # release\ndependencies = ['other==1.2.3']\n\n[tool.example]\nversion = '1.2.3'\n",
+            "[project]\nname = 'pkg'\nversion = \"1.3.0\" # release\ndependencies = ['other==1.2.3']\n\n[tool.example]\nversion = '1.2.3'\n",
+        ),
+        (
+            "package.json",
+            "{\n  \"name\": \"pkg\",\n  \"version\": \"1.2.3\",\n  \"dependencies\": {\n    \"other\": \"1.2.3\"\n  }\n}\n",
+            "{\n  \"name\": \"pkg\",\n  \"version\": \"1.3.0\",\n  \"dependencies\": {\n    \"other\": \"1.2.3\"\n  }\n}\n",
+        ),
+    ] {
+        let dir = project(filename, before);
+        note(dir.path());
+        let releases = changenote::status(dir.path()).unwrap();
+        assert_eq!(releases[0].old_version, Version::new(1, 2, 3));
+        assert_eq!(releases[0].version, Version::new(1, 3, 0));
+        assert_eq!(
+            fs::read_to_string(dir.path().join(filename)).unwrap(),
+            before
+        );
+        fs::write(dir.path().join("untouched.lock"), "unchanged").unwrap();
+        let releases = changenote::version(dir.path()).unwrap();
+        assert_eq!(releases[0].tag, "v1.3.0");
+        assert_eq!(
+            fs::read_to_string(dir.path().join(filename)).unwrap(),
+            after
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join("untouched.lock")).unwrap(),
+            "unchanged"
+        );
+        assert!(!dir.path().join(".changenote/change.md").exists());
+        assert!(changenote::version(dir.path()).unwrap().is_empty());
+    }
+}
+
+#[test]
+fn preserves_exact_json_numbers_when_updating_version() {
+    for number in [
+        "0.0100000000000000000001",
+        "18446744073709551616001",
+        "-18446744073709551616001",
+        "1.234567890123456789e+400",
+    ] {
+        let before = format!(
+            "{{\n  \"name\": \"pkg\",\n  \"version\": \"1.2.3\",\n  \"custom\": {{\n    \"number\": {number},\n    \"values\": [\n      {number}\n    ]\n  }}\n}}\n"
+        );
+        let dir = project("package.json", &before);
+        note(dir.path());
+        assert_eq!(
+            changenote::status(dir.path()).unwrap()[0].version,
+            Version::new(1, 3, 0)
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join("package.json")).unwrap(),
+            before
+        );
+        changenote::version(dir.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(dir.path().join("package.json")).unwrap(),
+            before.replace("\"1.2.3\"", "\"1.3.0\"")
+        );
+    }
+}
+
+#[test]
+fn preserves_json_objects_with_number_sentinel_keys() {
+    for value in ["1.0", "not a number"] {
+        let before = format!(
+            "{{\n  \"version\": \"1.2.3\",\n  \"custom\": {{\n    \"$serde_json::private::Number\": \"{value}\"\n  }},\n  \"values\": [\n    {{\n      \"$serde_json::private::Number\": \"{value}\"\n    }}\n  ]\n}}\n"
+        );
+        let dir = project("package.json", &before);
+        note(dir.path());
+        assert_eq!(
+            changenote::status(dir.path()).unwrap()[0].version,
+            Version::new(1, 3, 0)
+        );
+        changenote::version(dir.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(dir.path().join("package.json")).unwrap(),
+            before.replace("\"1.2.3\"", "\"1.3.0\"")
+        );
+    }
+}
+
+#[test]
+fn rejects_deeply_nested_json_without_writes() {
+    let content = format!(
+        "{{\"version\":\"1.2.3\",\"custom\":{}null{}}}",
+        "[".repeat(128),
+        "]".repeat(128)
+    );
+    let dir = project("package.json", &content);
+    fs::write(
+        dir.path().join(".changenote/change.md"),
+        "---\npkg: minor\n---\nChange\n",
+    )
+    .unwrap();
+    assert!(changenote::status(dir.path()).is_err());
+    assert!(changenote::version(dir.path()).is_err());
+    assert_eq!(
+        fs::read_to_string(dir.path().join("package.json")).unwrap(),
+        content
+    );
+    assert!(dir.path().join(".changenote/change.md").exists());
+    assert!(!dir.path().join("CHANGELOG.md").exists());
+    assert!(!dir.path().join(".changenote/releases.json").exists());
+}
+
+#[test]
+fn rejects_invalid_or_indirect_manifest_versions_without_writes() {
+    for (filename, content) in [
+        ("Cargo.toml", "[package]\nname = 'pkg'\n"),
+        (
+            "Cargo.toml",
+            "[package]\nversion.workspace = true\n[workspace.package]\nversion = '1.2.3'\n",
+        ),
+        ("Cargo.toml", "[package]\nversion = 123\n"),
+        ("Cargo.toml", "[package]\nversion = '1.2.3-beta.1'\n"),
+        ("Cargo.toml", "[package"),
+        ("pyproject.toml", "[project]\ndynamic = ['version']\n"),
+        (
+            "pyproject.toml",
+            "[project]\nversion = '1.2.3'\ndynamic = ['version']\n",
+        ),
+        ("pyproject.toml", "[tool.poetry]\nversion = '1.2.3'\n"),
+        ("pyproject.toml", "[project]\nversion = '1.2.3+build'\n"),
+        ("package.json", "{\"name\":\"pkg\"}"),
+        ("package.json", "{\"version\":123}"),
+        ("package.json", "{\"version\":\"banana\"}"),
+        ("package.json", "{\"version\":\"1.2.3-beta.1\"}"),
+        ("package.json", "{"),
+    ] {
+        let dir = project(filename, content);
+        fs::write(
+            dir.path().join(".changenote/change.md"),
+            "---\npkg: minor\n---\nChange\n",
+        )
+        .unwrap();
+        assert!(
+            changenote::status(dir.path()).is_err(),
+            "accepted {content}"
+        );
+        assert!(
+            changenote::version(dir.path()).is_err(),
+            "accepted {content}"
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join(filename)).unwrap(),
+            content
+        );
+        assert!(dir.path().join(".changenote/change.md").exists());
+        assert!(!dir.path().join("CHANGELOG.md").exists());
+        assert!(!dir.path().join(".changenote/releases.json").exists());
+    }
+}
+
+#[test]
+fn mixed_language_monorepo_updates_only_noted_packages() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::create_dir(dir.path().join(".changenote")).unwrap();
+    let mut packages = Map::new();
+    for (name, filename, content) in [
+        ("python", "pyproject.toml", "[project]\nversion = '0.1.0'\n"),
+        ("rust", "Cargo.toml", "[package]\nversion = '0.1.0'\n"),
+        ("node", "package.json", "{\"version\":\"0.1.0\"}\n"),
+        ("go", "VERSION", "0.1.0\n"),
+    ] {
+        fs::create_dir(dir.path().join(name)).unwrap();
+        fs::write(dir.path().join(name).join(filename), content).unwrap();
+        packages.insert(
+            name.into(),
+            serde_json::json!({"path": name, "version_file": filename}),
+        );
+    }
+    fs::write(
+        dir.path().join(".changenote/config.json"),
+        serde_json::json!({"packages": packages}).to_string(),
+    )
+    .unwrap();
+    changenote::add(
+        dir.path(),
+        "change",
+        vec!["python".into(), "go".into()],
+        Bump::Patch,
+        "Fix",
+    )
+    .unwrap();
+    let releases = changenote::version(dir.path()).unwrap();
+    assert_eq!(releases.len(), 2);
+    assert_eq!(releases[0].tag, "changenote/go@v0.1.1");
+    assert_eq!(releases[1].tag, "changenote/python@v0.1.1");
+    assert_eq!(
+        fs::read_to_string(dir.path().join("go/VERSION")).unwrap(),
+        "0.1.1\n"
+    );
+    assert_eq!(
+        fs::read_to_string(dir.path().join("rust/Cargo.toml")).unwrap(),
+        "[package]\nversion = '0.1.0'\n"
+    );
+    assert_eq!(
+        fs::read_to_string(dir.path().join("node/package.json")).unwrap(),
+        "{\"version\":\"0.1.0\"}\n"
+    );
+    assert!(!dir.path().join("rust/CHANGELOG.md").exists());
+}

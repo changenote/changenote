@@ -1,0 +1,215 @@
+#[cfg(test)]
+use crate::release::Bump;
+use crate::release::Release;
+use crate::sections::NoteSection;
+use anyhow::{Result, ensure};
+use semver::Version;
+
+#[cfg(test)]
+fn render(release: &Release, old: &str, legacy: bool) -> String {
+    let sections = crate::sections::group(release, &[], None);
+    render_sections(release, old, legacy, &sections)
+}
+
+pub(crate) fn render_sections(
+    release: &Release,
+    old: &str,
+    legacy: bool,
+    sections: &[NoteSection],
+) -> String {
+    let mut entry = format!("## {}\n\n", release.version);
+    if legacy {
+        entry.push_str(&items(release.notes.iter().map(String::as_str)));
+        entry.push_str("\n\n");
+        return format!("{entry}{old}");
+    }
+    if release.notes.is_empty() {
+        entry.push_str("Released with its fixed version group; no direct changes.\n\n");
+    }
+    for section in sections {
+        entry.push_str(&format!(
+            "### {}\n\n{}\n\n",
+            section.title,
+            items(section.notes.iter().map(String::as_str))
+        ));
+    }
+    let index = first_version_heading(old).unwrap_or(old.len());
+    let (prefix, suffix) = old.split_at(index);
+    let separator = if prefix.is_empty() || prefix.ends_with("\n\n") || prefix.ends_with("\r\n\r\n")
+    {
+        ""
+    } else if prefix.ends_with('\n') {
+        "\n"
+    } else {
+        "\n\n"
+    };
+    format!("{prefix}{separator}{entry}{suffix}")
+}
+
+fn items<'a>(notes: impl Iterator<Item = &'a str>) -> String {
+    notes
+        .map(|n| format!("- {}", n.replace('\n', "\n  ")))
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+// Only ATX SemVer headings outside code and generated note items start a release.
+fn first_version_heading(text: &str) -> Option<usize> {
+    version_headings(text).first().map(|(start, _, _)| *start)
+}
+
+pub(crate) fn extract(text: &str, version: &Version) -> Result<String> {
+    let headings = version_headings(text);
+    let matches: Vec<_> = headings
+        .iter()
+        .enumerate()
+        .filter(|(_, (_, _, v))| v == version)
+        .collect();
+    ensure!(
+        matches.len() == 1,
+        "expected exactly one changelog entry for {version}, found {}",
+        matches.len()
+    );
+    let (index, (_, start, _)) = matches[0];
+    let end = headings
+        .get(index + 1)
+        .map_or(text.len(), |(start, _, _)| *start);
+    let body = text[*start..end].trim_matches(['\r', '\n']);
+    ensure!(
+        !body.trim().is_empty(),
+        "empty changelog entry for {version}"
+    );
+    Ok(format!("{body}\n"))
+}
+
+fn version_headings(text: &str) -> Vec<(usize, usize, Version)> {
+    let mut headings = Vec::new();
+    let mut offset = 0;
+    let mut fence: Option<(u8, usize)> = None;
+    let mut in_note = false;
+    for line in text.split_inclusive('\n') {
+        let text = line.trim_end_matches(['\r', '\n']);
+        let indent = text.bytes().take_while(|b| *b == b' ').count();
+        let note_start = fence.is_none() && indent == 0 && text.starts_with("- ");
+        // Generated note continuations, including blank lines, have two spaces.
+        // An unindented separator ends the item, even before an indented entry.
+        if fence.is_none() && indent == 0 {
+            in_note = note_start;
+        }
+        if indent <= 3 {
+            let text = if note_start {
+                &text[2..]
+            } else {
+                &text[indent..]
+            };
+            let marker = text.as_bytes().first().copied();
+            if matches!(marker, Some(b'`' | b'~')) {
+                let marker = marker.unwrap();
+                let count = text.bytes().take_while(|b| *b == marker).count();
+                if let Some((open, length)) = fence {
+                    if marker == open && count >= length && text[count..].trim().is_empty() {
+                        fence = None;
+                    }
+                } else if count >= 3 && (marker != b'`' || !text[count..].contains('`')) {
+                    fence = Some((marker, count));
+                }
+            } else if fence.is_none() && !in_note {
+                let count = text.bytes().take_while(|b| *b == b'#').count();
+                if (1..=6).contains(&count)
+                    && text
+                        .as_bytes()
+                        .get(count)
+                        .is_some_and(u8::is_ascii_whitespace)
+                {
+                    let version = text[count..].split_whitespace().next().unwrap_or("");
+                    if let Ok(version) = Version::parse(version) {
+                        headings.push((offset, offset + line.len(), version));
+                    }
+                }
+            }
+        }
+        offset += line.len();
+    }
+    headings
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn release() -> Release {
+        Release {
+            package: "pkg".into(),
+            old_version: Version::new(1, 0, 0),
+            version: Version::new(1, 1, 0),
+            bump: Bump::Minor,
+            tag: "v1.1.0".into(),
+            notes: vec!["Fix\n\n```rs\nrun();\n```".into(), "Feature".into()],
+            note_bumps: vec![Bump::Patch, Bump::Minor],
+        }
+    }
+
+    #[test]
+    fn separate_notes_match_the_documented_changelog_entry() {
+        let release = Release {
+            package: "pkg-a".into(),
+            notes: vec![
+                "Read change note messages from a file.\nUse `--message-file <path>` to supply a Markdown file.".into(),
+                "Fix parsing of quoted package names in change notes.".into(),
+            ],
+            note_bumps: vec![Bump::Minor, Bump::Patch],
+            ..release()
+        };
+        let expected = concat!(
+            "## 1.1.0\n\n",
+            "### Minor Changes\n\n",
+            "- Read change note messages from a file.\n",
+            "  Use `--message-file <path>` to supply a Markdown file.\n\n",
+            "### Patch Changes\n\n",
+            "- Fix parsing of quoted package names in change notes.\n\n",
+        );
+        assert_eq!(render(&release, "", false), expected);
+    }
+
+    #[test]
+    fn preserves_prefix_and_prior_versions() {
+        let entry = "## 1.1.0\n\n### Minor Changes\n\n- Feature\n\n### Patch Changes\n\n- Fix\n  \n  ```rs\n  run();\n  ```\n\n";
+        for (old, prefix, suffix) in [
+            ("", "", ""),
+            ("## 1.0.0\n\nOld\n", "", "## 1.0.0\n\nOld\n"),
+            ("  ## 1.0.0\nOld\n", "", "  ## 1.0.0\nOld\n"),
+            (
+                "# Changelog\n\nIntro\n\n## 1.0.0\nOld\n",
+                "# Changelog\n\nIntro\n\n",
+                "## 1.0.0\nOld\n",
+            ),
+            ("# Changelog", "# Changelog\n\n", ""),
+            ("Intro\n", "Intro\n\n", ""),
+            (
+                "```md\n## 9.0.0\n```\n\n## 1.0.0\n",
+                "```md\n## 9.0.0\n```\n\n",
+                "## 1.0.0\n",
+            ),
+            (
+                "~~~\n## 9.0.0\n~~~\n\n## 1.0.0\n",
+                "~~~\n## 9.0.0\n~~~\n\n",
+                "## 1.0.0\n",
+            ),
+            (
+                "    ## 9.0.0\n\n## 1.0.0\n",
+                "    ## 9.0.0\n\n",
+                "## 1.0.0\n",
+            ),
+            (
+                "# Changelog\r\n\r\n## 1.0.0\r\n",
+                "# Changelog\r\n\r\n",
+                "## 1.0.0\r\n",
+            ),
+        ] {
+            assert_eq!(
+                render(&release(), old, false),
+                format!("{prefix}{entry}{suffix}")
+            );
+        }
+    }
+}

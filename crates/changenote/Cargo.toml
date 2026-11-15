@@ -18,16 +18,12 @@ include = [
 ]
 
 [dependencies]
-anyhow = "1"
-getrandom = "0.4"
-clap = { version = "4", features = ["derive"] }
-clap_complete = "4"
-semver = { version = "1", features = ["serde"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
-toml_edit = "0.25"
-serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
-globset = "0.4.20"
+changenote-core = { path = "../changenote-core" }
+changenote-cli = { path = "../changenote-cli" }
+changenote-skill = { path = "../changenote-skill" }
 
 [dev-dependencies]
+anyhow = "1"
+semver = { version = "1", features = ["serde"] }
+serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
 tempfile = "3"

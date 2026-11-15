@@ -1,2 +1,2 @@
 # Exact generated changelog excerpts retain their final blank-line separator.
-crates/changenote/tests/fixtures/planning/**/expected-*-CHANGELOG.md -text whitespace=-blank-at-eof
+crates/changenote-cli/tests/e2e/fixtures/planning/**/expected-*-CHANGELOG.md -text whitespace=-blank-at-eof
