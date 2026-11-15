@@ -20,7 +20,7 @@ fn skill_prints_the_exact_bundled_markdown_without_configuration() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(output.stderr.is_empty());
-    assert_eq!(output.stdout, changenote_skill::SKILL.as_bytes());
+    assert_eq!(output.stdout, crate::SKILL.as_bytes());
     assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
 }
 
@@ -41,7 +41,7 @@ fn skill_ignores_root_configuration_and_local_skill_files() {
         let output = cli(dir.path(), &args);
         assert!(output.status.success(), "{args:?}");
         assert!(output.stderr.is_empty());
-        assert_eq!(output.stdout, changenote_skill::SKILL.as_bytes());
+        assert_eq!(output.stdout, crate::SKILL.as_bytes());
     }
 
     assert_eq!(fs::read_to_string(config).unwrap(), "invalid configuration");

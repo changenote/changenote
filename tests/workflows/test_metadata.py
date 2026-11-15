@@ -114,7 +114,7 @@ class Metadata(unittest.TestCase):
             if hook["id"] == "end-of-file-fixer"
         )
         exclusion = re.compile(hook["exclude"])
-        fixtures = list((ROOT / "crates/changenote/tests/fixtures/planning").glob(
+        fixtures = list((ROOT / "crates/changenote-cli/tests/e2e/fixtures/planning").glob(
             "*/expected-*-CHANGELOG.md"
         ))
         self.assertTrue(fixtures)
@@ -123,10 +123,10 @@ class Metadata(unittest.TestCase):
                 self.assertRegex(fixture.relative_to(ROOT).as_posix(), exclusion)
                 self.assertTrue(fixture.read_bytes().endswith(b"\n\n"))
         for path in ("README.md", "crates/changenote/README.md",
-                     "crates/changenote/tests/fixtures/planning/provenance/fixture/.changenote/a.md"):
+                     "crates/changenote-cli/tests/e2e/fixtures/planning/provenance/fixture/.changenote/a.md"):
             self.assertIsNone(exclusion.search(path))
         self.assertIn(
-            "crates/changenote/tests/fixtures/planning/**/expected-*-CHANGELOG.md -text whitespace=-blank-at-eof",
+            "crates/changenote-cli/tests/e2e/fixtures/planning/**/expected-*-CHANGELOG.md -text whitespace=-blank-at-eof",
             (ROOT / ".gitattributes").read_text(),
         )
 

@@ -114,9 +114,16 @@ def prepared_crate(root):
             (crate / "tests" / f"core_{source.name}").write_text(
                 source.read_text().replace("use changenote_core as changenote;\n", "")
             )
-        skill_test = crate / "tests/skill.rs"
-        skill_test.write_text(
-            '#[path = "../src/skill.rs"]\nmod changenote_skill;\n\n' + skill_test.read_text()
+        shutil.copytree(root / "crates/changenote-cli/tests/e2e", crate / "tests/cli")
+        cli_test = crate / "tests/cli.rs"
+        cli_test.write_text(
+            cli_test.read_text()
+            .replace("changenote_skill::SKILL", 'include_str!("../SKILL.md")')
+            .replace("../../changenote-cli/tests/e2e/mod.rs", "cli/mod.rs")
+            .replace(
+                "../changenote-cli/tests/e2e/fixtures/planning",
+                "tests/cli/fixtures/planning",
+            )
         )
         main = crate / "src/main.rs"
         main.write_text(

@@ -1,9 +1,8 @@
-use changenote::load_config;
+use changenote::{Bump, load_config};
 use semver::Version;
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
 fn source(root: &Path, path: &str, content: &str) {
     let path = root.join(path);
@@ -11,96 +10,40 @@ fn source(root: &Path, path: &str, content: &str) {
     fs::write(path, content).unwrap();
 }
 
-fn configure(root: &Path, primary: &str, outputs: &[&str]) {
-    source(
-        root,
-        ".changenote/config.json",
-        &json!({"packages": {"app": {
-            "path": ".", "version_file": primary, "version_outputs": outputs
-        }}})
-        .to_string(),
-    );
-    source(
-        root,
-        ".changenote/change.md",
-        "---\napp: minor\n---\nAdd an app feature.\n",
-    );
-}
-
 fn read(root: &Path, path: &str) -> String {
     fs::read_to_string(root.join(path)).unwrap()
 }
 
 #[test]
-fn init_adopts_nested_xcconfig_without_changing_files() {
+fn init_includes_repository_schema() {
     let dir = tempfile::tempdir().unwrap();
-    let root = dir.path();
-    let path = "Configuration/App.release.xcconfig";
-    let before = "// release\r\nMARKETING_VERSION = 1.2.3\r\nCURRENT_PROJECT_VERSION = 42\r\n";
-    source(root, path, before);
-    let output = Command::new(env!("CARGO_BIN_EXE_changenote"))
-        .current_dir(root)
-        .args(["init", "--name", "app", "--version-file", path])
-        .output()
-        .unwrap();
-    assert!(output.status.success(), "{:?}", output);
-    let config = load_config(root).unwrap();
-    assert_eq!(config.packages["app"].path, Path::new("Configuration"));
-    assert_eq!(
-        config.packages["app"].version_file,
-        Path::new("App.release.xcconfig")
-    );
-    assert_eq!(read(root, path), before);
-    assert!(!root.join("VERSION").exists());
-    assert!(changenote::status(root).unwrap().is_empty());
+    changenote::init(dir.path(), "pkg-a", Version::new(0, 0, 0)).unwrap();
+    let config = load_config(dir.path()).unwrap();
+    let schema: Value = serde_json::from_str(include_str!("../schema.json")).unwrap();
+    assert_eq!(config.schema.as_deref().unwrap(), schema["$id"]);
 }
 
 #[test]
-fn primary_and_additional_xcconfigs_update_without_external_tools() {
+fn separate_notes_match_the_documented_changelog_entry() {
     let dir = tempfile::tempdir().unwrap();
-    let root = dir.path();
-    let app = "MARKETING_VERSION = 1.2.3\nCURRENT_PROJECT_VERSION = 42\n";
-    let widget = "MARKETING_VERSION = 1.2.3 // widget\r\nCURRENT_PROJECT_VERSION = 42\r\n";
-    source(root, "Configuration/Version.xcconfig", app);
-    source(root, "Widget.xcconfig", widget);
-    source(root, "VERSION", "1.2.3\n");
-    configure(
-        root,
-        "Configuration/Version.xcconfig",
-        &["Widget.xcconfig", "VERSION"],
-    );
-    for path in [
-        "Cargo.lock",
-        "uv.lock",
-        "package-lock.json",
-        "Package.resolved",
+    changenote::init(dir.path(), "pkg-a", "1.0.0".parse().unwrap()).unwrap();
+    for (name, bump, message) in [
+        (
+            "feature",
+            Bump::Minor,
+            "Read change note messages from a file.\nUse `--message-file <path>` to supply a Markdown file.",
+        ),
+        (
+            "fix",
+            Bump::Patch,
+            "Fix parsing of quoted package names in change notes.",
+        ),
     ] {
-        source(root, path, "unchanged\n");
+        changenote::add(dir.path(), name, vec!["pkg-a".into()], bump, message).unwrap();
     }
-    let output = Command::new(env!("CARGO_BIN_EXE_changenote"))
-        .current_dir(root)
-        .env("PATH", root.join("no-executables"))
-        .arg("version")
-        .output()
-        .unwrap();
-    assert!(output.status.success(), "{:?}", output);
-    assert_eq!(
-        read(root, "Configuration/Version.xcconfig"),
-        app.replace("1.2.3", "1.3.0")
-    );
-    assert_eq!(
-        read(root, "Widget.xcconfig"),
-        widget.replace("1.2.3", "1.3.0")
-    );
-    assert_eq!(read(root, "VERSION"), "1.3.0\n");
-    for path in [
-        "Cargo.lock",
-        "uv.lock",
-        "package-lock.json",
-        "Package.resolved",
-    ] {
-        assert_eq!(read(root, path), "unchanged\n");
-    }
+    changenote::version(dir.path()).unwrap();
+    let entry = fs::read_to_string(dir.path().join("CHANGELOG.md")).unwrap();
+    assert!(include_str!("../docs/notes.md").contains(entry.trim_end()));
 }
 
 #[test]

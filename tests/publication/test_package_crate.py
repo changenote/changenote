@@ -48,10 +48,22 @@ class PackageCrate(unittest.TestCase):
             for path in (ROOT / "crates/changenote").rglob("*"):
                 if path.is_file() and path.parent.name != "src" and path.name != "Cargo.toml":
                     relative = path.relative_to(ROOT / "crates/changenote")
-                    if relative == Path("tests/skill.rs"):
-                        self.assertTrue((crate / relative).read_bytes().endswith(path.read_bytes()))
+                    if relative == Path("tests/cli.rs"):
+                        expected = (path.read_text()
+                                    .replace("changenote_skill::SKILL", 'include_str!("../SKILL.md")')
+                                    .replace("../../changenote-cli/tests/e2e/mod.rs", "cli/mod.rs")
+                                    .replace("../changenote-cli/tests/e2e/fixtures/planning",
+                                             "tests/cli/fixtures/planning"))
+                        self.assertEqual(expected, (crate / relative).read_text())
                     else:
                         self.assertEqual(path.read_bytes(), (crate / relative).read_bytes())
+            suite = ROOT / "crates/changenote-cli/tests/e2e"
+            for source in suite.rglob("*"):
+                if source.is_file():
+                    self.assertEqual(
+                        source.read_bytes(),
+                        (crate / "tests/cli" / source.relative_to(suite)).read_bytes(),
+                    )
 
             bundled = tomllib.loads((crate / "Cargo.toml").read_text())
             public = tomllib.loads(original_manifest.decode())

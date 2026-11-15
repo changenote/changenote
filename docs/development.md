@@ -21,8 +21,9 @@ The repository uses one Cargo workspace with four members. `changenote` is the p
 - `crates/changenote/src/`: library re-exports and executable entry point.
 - `crates/changenote-core/`: private release logic, unit tests, and core integration tests.
 - `crates/changenote-cli/`: private command parsing, output, dispatch, and argument unit tests.
+- `crates/changenote-cli/tests/e2e/`: executable test scenarios and their planning fixtures.
 - `crates/changenote-skill/`: private embedded skill and its single Markdown source.
-- `crates/changenote/tests/`: public API, executable, and package-resource integration tests, with CLI planning fixtures.
+- `crates/changenote/tests/`: a thin executable test harness and consolidated public API and package-resource checks.
 - `pyproject.toml`: maturin package metadata and build configuration.
 - `uv.lock`: Python project dependency lockfile.
 - `python/changenote/`: Python wrapper module for the Rust CLI.
@@ -75,9 +76,13 @@ Cargo cannot publish dependencies on unpublished private crates. Use the assembl
 uv run --no-project python scripts/package_crate.py package --locked -p changenote
 ```
 
-The helper copies the public package into a temporary directory, adds the unchanged core modules, CLI source, and skill source, and replaces private dependencies with their registry dependencies. It also includes the skill Markdown and core integration tests. Core tests use the public library in this standalone archive; CLI argument unit tests stay with the CLI source. It combines the local lockfile entries without changing registry dependency versions. The resulting archive has no private crate dependencies and supports `cargo install changenote --locked` without this helper. The source checkout is unchanged. Cargo outputs use root `target/`, unless `CARGO_TARGET_DIR` is set.
+The helper copies the public package into a temporary directory, adds the unchanged core modules, CLI source, and skill source, and replaces private dependencies with their registry dependencies. It also includes the skill Markdown, core integration tests, and CLI scenarios with their hidden planning fixtures. The archive's test harness uses these package-local paths. Core tests use the public library in this standalone archive; CLI argument unit tests stay with the CLI source. It combines the local lockfile entries without changing registry dependency versions. The resulting archive has no private crate dependencies and supports `cargo install changenote --locked` without this helper. The source checkout is unchanged. Cargo outputs use root `target/`, unless `CARGO_TARGET_DIR` is set.
 
-Core logic tests run against `changenote-core` directly. CLI argument tests run in `changenote-cli`. Public API compatibility, subprocess behavior, packaged resources, and their golden fixtures stay in `changenote`.
+Core logic tests run against `changenote-core` directly. CLI argument tests run in `changenote-cli`.
+CLI subprocess scenarios and golden fixtures live in `crates/changenote-cli/tests/e2e/`.
+The public crate's small `tests/cli.rs` harness imports that suite so Cargo supplies the real release executable and package version.
+The public crate contains no CLI scenarios or fixtures; its other test files check public API compatibility and packaged resources.
+Run only the executable suite with `cargo test --locked -p changenote --test cli`.
 
 The publication helper uses the same assembly process after its registry and credential checks. Historical single-package releases use their original manifests without assembly. Python builds use the workspace crates directly; maturin includes their sources in the source distribution.
 

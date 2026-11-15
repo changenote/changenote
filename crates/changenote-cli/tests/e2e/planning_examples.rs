@@ -20,7 +20,7 @@ fn copy_tree(from: &Path, to: &Path) {
 fn exact_planning_examples_match_status_and_generated_changelogs() {
     for name in ["provenance", "fixed-equal", "fixed-unequal"] {
         let example = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/planning")
+            .join(crate::PLANNING_FIXTURES)
             .join(name);
         let dir = tempfile::tempdir().unwrap();
         copy_tree(&example.join("fixture"), dir.path());

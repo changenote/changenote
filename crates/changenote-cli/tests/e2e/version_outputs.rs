@@ -1,6 +1,4 @@
-use changenote::{Bump, Config, Package};
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 use tempfile::TempDir;
@@ -28,30 +26,6 @@ fn fixture(outputs: Value) -> TempDir {
 
 fn read(root: &Path, path: &str) -> String {
     fs::read_to_string(root.join(path)).unwrap()
-}
-
-#[test]
-fn public_package_config_and_api_signatures_remain_usable() {
-    let config = Config {
-        schema: None,
-        packages: BTreeMap::from([(
-            "pkg".into(),
-            Package {
-                path: ".".into(),
-                version_file: "VERSION".into(),
-            },
-        )]),
-    };
-    assert_eq!(
-        serde_json::to_value(config).unwrap(),
-        json!({"packages": {"pkg": {
-            "path": ".", "version_file": "VERSION"
-        }}})
-    );
-    let dir = fixture(json!(["extra"]));
-    let config = changenote::load_config(dir.path()).unwrap();
-    assert_eq!(config.packages["pkg"].version_file, Path::new("VERSION"));
-    changenote::add(dir.path(), "api", vec!["pkg".into()], Bump::Patch, "API").unwrap();
 }
 
 #[test]
