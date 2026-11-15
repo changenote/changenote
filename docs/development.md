@@ -43,7 +43,11 @@ The repository uses one Cargo workspace with four members. `changenote` is the p
 ## Documentation site
 
 The site uses Zensical and the Markdown files in `docs/`.
-Add each site page to `nav` in `zensical.toml`.
+Add each site page to `nav` in `zensical.toml`:
+
+- `Getting Started`: installation and the Quickstart homepage in `docs/index.md`.
+- `Usage`: configuration, change notes, releases, PR checks, GitHub Actions, and language guides.
+- `Development`: repository maintenance and publication instructions.
 
 Install the documentation tools and build the site from the repository root:
 
