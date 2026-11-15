@@ -120,6 +120,10 @@ Local checks do not cover the release workflow's macOS and Windows wheel builds.
 ## Documentation and local skills
 
 Check changed commands, paths, links, and examples against the implementation.
+For a bundled skill audit with corrections in scope, use [verify-changenote-skill](../verify-changenote-skill/SKILL.md).
+That skill checks `crates/changenote-skill/SKILL.md` against the implementation and directly corrects confirmed mismatches.
+Keep verification-only requests read-only.
+
 For a full verification request, Zensical site verification, site content changes, or `zensical.toml` changes, use [verify-changenote-site](../verify-changenote-site/SKILL.md).
 That skill owns site builds, browser checks, and desktop and mobile screenshot inspection.
 
