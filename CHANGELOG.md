@@ -1,3 +1,49 @@
+## 0.14.0
+
+### Minor Changes
+
+- Sources: [5c31ad8d59b9](https://github.com/changenote/changenote/commit/5c31ad8d59b9d2e5c74329db634291aea9cce76d)
+  
+  Support native Android versions in `gradle.properties` using `appVersionName` and `appVersionCode`.
+  Increment the build code once per release and preserve unrelated properties.
+
+- Sources: [b9be2fc9f61f](https://github.com/changenote/changenote/commit/b9be2fc9f61f3820c85bb3e0e0cf4bdc7e92d26a)
+  
+  Support explicit package versions in Lean 4 `lakefile.toml` files, including
+  initialization and additional version outputs.
+  Keep toolchain pins and dependency resolutions unchanged.
+
+- Sources: [9d06b5823244](https://github.com/changenote/changenote/commit/9d06b5823244e34e220b372d20883bd2107f2971)
+  
+  Add offline pnpm and Bun text lockfile synchronization for `package.json` releases and local tool diagnostics.
+  Keep one Node.js lockfile per owning directory; mixed lockfiles now fail before release writes.
+  Migrate binary `bun.lockb` files to `bun.lock` before versioning.
+  Reject child pnpm lockfiles below a workspace root before writes. Use the workspace-root lockfile with shared locking and remove stale child lockfiles.
+
+- Sources: [786fd81fd425](https://github.com/changenote/changenote/commit/786fd81fd42592aa5d2ebe545858a1fa5393e4a6)
+  
+  Support explicit `tool.poetry.version` in `pyproject.toml`, with
+  `project.version` taking priority. Leave `poetry.lock` unchanged for
+  version-only releases.
+
+- Sources: [2e7a860f1e7a](https://github.com/changenote/changenote/commit/2e7a860f1e7a20c30b1fcea9659754cfafc96146), [8f9b22f79a6a](https://github.com/changenote/changenote/commit/8f9b22f79a6a1161be986fd995dbc65c3335df78)
+  
+  Move the Rust CLI into a four-member Cargo workspace while preserving Cargo and Python distribution builds.
+  Keep the public `changenote` entry points thin, with private `changenote-core`, `changenote-cli`, and `changenote-skill` implementation crates.
+  Cargo publication assembles a self-contained public crate; the private crates are not published separately.
+  To install from a source checkout, use `cargo install --locked --path crates/changenote`; registry installation commands are unchanged.
+  The source skill moves from `skills/changenote/SKILL.md` to `crates/changenote-skill/SKILL.md`.
+  Update direct source-path references, or run `changenote skill` to retrieve the bundled Markdown without a source checkout.
+
+### Patch Changes
+
+- Sources: [132acee666d9](https://github.com/changenote/changenote/commit/132acee666d99e2413173c8bb70613fe6c80b9d7)
+  
+  Fix the bundled skill guidance to prefer `changenote/action` and its inputs for release workflows.
+  Use standalone Actions only for requirements that root cannot satisfy, and add only the necessary entry points.
+  Document PR-only defaults, explicit publication controls, and guarded independent CI and publication.
+  Require durable routing or a recovery path before enabling scripts that can be skipped when a pending run is replaced.
+
 ## 0.13.1
 
 ### Patch Changes
