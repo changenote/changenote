@@ -152,12 +152,40 @@ Set an explicit [tag prefix](#additional-version-files-and-tag-prefixes) to keep
 | `Cargo.toml` | `Cargo.lock` | `cargo update --workspace --offline` |
 | `pyproject.toml` | `uv.lock` | `uv lock --offline` |
 | `package.json` | `package-lock.json` | `npm install --package-lock-only --ignore-scripts --offline --no-audit --no-fund` |
+| `package.json` | `pnpm-lock.yaml` | `pnpm install --lockfile-only --ignore-scripts --ignore-pnpmfile --offline --no-frozen-lockfile` |
+| `package.json` | `bun.lock` | `bun install --lockfile-only --ignore-scripts --offline` |
 
-The CLI checks the manifest directory, then its ancestors up to the repository root, and uses the nearest matching lockfile. This supports shared workspace lockfiles. The owning manifest must exist beside the lockfile. All release manifests are updated before any command runs; each shared lockfile is refreshed once. Lockfile symlinks and paths outside the repository are rejected. Plain-text version files do not trigger synchronization. No lockfile is created when no matching file exists. Yarn, pnpm, and npm shrinkwrap files are not supported.
+The CLI checks the manifest directory, then its ancestors up to the repository root, and uses the nearest matching lockfile.
+For `package.json`, the existing lockfile selects npm, pnpm, or Bun; `packageManager` does not override this selection.
+A nested lockfile takes priority over an ancestor lockfile, even when they use different tools, except for the pnpm workspace limit below.
+The owning manifest must exist beside the lockfile. Shared pnpm lockfiles also need the normal `pnpm-workspace.yaml` configuration.
+A selected `pnpm-lock.yaml` below a pnpm workspace root fails before writes. pnpm can change the workspace-root lockfile instead of the selected file.
+This limit also applies when `sharedWorkspaceLockfile` is false or the workspace root is outside the changenote root.
+Use the workspace-root lockfile with shared locking. Remove stale child lockfiles before using changenote.
+An independent nested pnpm workspace can use its own workspace-root lockfile.
+All release manifests are updated before any command runs; each shared lockfile is refreshed once.
+Lockfile symlinks and paths outside the repository are rejected.
+Plain-text version files do not trigger synchronization. No lockfile is created when no matching file exists.
 
-Install the required package manager and populate its cache before running `version`. Commands run offline without upgrade flags; npm lifecycle scripts are disabled and dependencies are not installed. Existing dependency resolutions are retained where the package manager permits. `status`, `add`, and a `version` run without pending notes do not run package managers.
+Keep only one Node.js lockfile in each owning directory.
+Multiple supported lockfiles, or a supported lockfile beside `yarn.lock`, `npm-shrinkwrap.json`, or `bun.lockb`, fail before writes.
+Yarn and npm shrinkwrap synchronization are not supported.
+A `bun.lockb` file also fails on its own. Migrate it to text `bun.lock` with Bun before using changenote, then remove the binary lockfile.
 
-If a command is missing or fails, the CLI attempts to restore all known release files. This includes manifests, lockfiles, changelogs, saved release data, and consumed notes. The same recovery applies to later write or note-deletion errors. See [Release-write recovery](releases.md#release-write-recovery) for the limits. Review all outputs before committing. Upgrade the CLI and Actions together: Release PRs stage these lockfiles, and publication reconstructs them with the same commands. Replay therefore needs compatible package-manager versions and cached dependencies. Release trees with the metadata-only batch format but without lockfile updates remain supported.
+Install the required package manager and populate its cache before running `version`.
+Commands run offline without upgrade flags. npm, pnpm, and Bun lifecycle scripts are disabled; dependencies are not installed.
+pnpm executable hooks are also disabled. Its frozen-lockfile setting is disabled for release writes, including in CI.
+Use a Bun version that supports `install --offline`; pnpm 12.21.0 and Bun 1.4.4 were verified locally.
+An older tool that rejects these flags fails with normal release-file recovery; the CLI does not retry online.
+Existing dependency resolutions are retained where the package manager permits.
+pnpm does not record package versions, and Bun does not record the root package version, so a version-only refresh can leave a lockfile unchanged.
+`status`, `add`, `doctor`, and a `version` run without pending notes do not run package managers.
+
+If a command is missing or fails, the CLI attempts to restore all known release files. This includes manifests, lockfiles, changelogs, saved release data, and consumed notes. The same recovery applies to later write or note-deletion errors. See [Release-write recovery](releases.md#release-write-recovery) for the limits. Review all outputs before committing.
+Release replay needs compatible package-manager versions and cached dependencies.
+Before using pnpm or Bun in release automation, verify that the selected Action revision prepares the tools and caches and stages these lockfiles.
+This CLI change does not add that support to older Action revisions.
+Release trees with the metadata-only batch format but without lockfile updates remain supported.
 
 ## Fixed version groups
 

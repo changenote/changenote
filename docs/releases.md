@@ -120,7 +120,8 @@ Local Git checks do not refresh the index or run fsmonitor hooks.
 A dirty tree or a nested Git root fails the Git check; unavailable Git or a non-Git directory is reported as unknown.
 Cache and remote credential readiness remain unknown.
 Thus `passed: true` means no local check failed, not that publication is ready or authorized.
-The current manifest-to-lockfile rules still apply; automatic package-manager selection is separate work.
+For Node.js manifests, the nearest supported lockfile selects npm, pnpm, or Bun.
+Ambiguous lockfiles fail diagnostics before tool checks. See the [selection rules](configuration.md#automatic-lockfile-synchronization).
 Rust callers can use `doctor()` and its structured report types.
 
 ## Release-write recovery
