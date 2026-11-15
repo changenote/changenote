@@ -120,38 +120,9 @@ Local checks do not cover the release workflow's macOS and Windows wheel builds.
 ## Documentation and local skills
 
 Check changed commands, paths, links, and examples against the implementation.
-For Zensical site verification, site content changes, or `zensical.toml` changes, run:
+For a full verification request, Zensical site verification, site content changes, or `zensical.toml` changes, use [verify-changenote-site](../verify-changenote-site/SKILL.md).
+That skill owns site builds, browser checks, and desktop and mobile screenshot inspection.
 
-```sh
-uv sync --locked --only-dev
-uv run --locked --no-sync zensical build --clean
-```
-
-Confirm that new site pages appear in `zensical.toml` navigation.
-Before browser verification, detect WSL from `WSL_DISTRO_NAME`, `WSL_INTEROP`, or a case-insensitive `microsoft` or `wsl` marker in `/proc/sys/kernel/osrelease`.
-
-- In WSL, launch Chrome or Chromium with `--ozone-platform=wayland`, including launches managed by browser automation tools.
-  - Before attaching to an existing browser, confirm that it was launched with this flag.
-  - If the flag cannot be set or verified, or the Wayland display is unavailable, report browser verification as incomplete.
-  - Do not silently fall back to X11 or restart a user-owned browser to change its flags.
-
-After the build, complete these browser checks:
-
-1. Preview the current checkout with `uv run --locked --no-sync zensical serve` in a managed background process.
-2. Open the homepage and affected pages in a browser, read their content, and test changed navigation or interactive behavior.
-   - If no pages changed, include a representative guide page.
-3. Capture screenshots of each inspected page at desktop and mobile viewport sizes after rendering finishes.
-   - Save screenshots under `.verifications/YYYY_MM_DD_HH_MM_<type>-<scope>-<topic>/` at the repository root; create the directory when needed.
-   - Use the local start date and time in 24-hour format for `YYYY_MM_DD_HH_MM`.
-   - Use lowercase kebab-case for the verification type, component scope, and topic, such as `.verifications/2026_01_02_03_04_visual-zensical-navigation/`.
-   - Include the page and viewport in each filename, such as `index-desktop.png` or `configuration-mobile.png`.
-4. Open and visually inspect the screenshot images against the requested result, supplied references, and existing site design.
-   - Check navigation, text, tables, code blocks, and images for clipping, overlap, overflow, and unreadable content.
-   - Build success, page text, DOM inspection, or screenshot capture without viewing the images does not satisfy visual verification.
-5. Report page URLs, viewport sizes, screenshot paths, and visual findings.
-   - If browser access, screenshot capture, or image viewing is unavailable, report visual verification as incomplete and state what is needed.
-
-Stop only the preview process started for this check, and do not commit screenshots unless explicitly requested.
 For `.agents/skills/` changes, check YAML frontmatter, trigger clarity, directory/name agreement, and referenced files and commands.
 Do not require a site build for a repository-local skill that is not part of the site.
 
