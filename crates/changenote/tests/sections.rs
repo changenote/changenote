@@ -229,60 +229,6 @@ fn invalid_config_and_types_fail_before_writes() {
 }
 
 #[test]
-fn pr_check_validates_typed_notes_even_with_an_exemption() {
-    let dir = project(Some(sections()));
-    let root = dir.path();
-    let git = |args: &[&str]| {
-        let output = Command::new("git")
-            .current_dir(root)
-            .args(args)
-            .env("GIT_AUTHOR_NAME", "Test")
-            .env("GIT_COMMITTER_NAME", "Test")
-            .env("GIT_AUTHOR_EMAIL", "test@example.com")
-            .env("GIT_COMMITTER_EMAIL", "test@example.com")
-            .output()
-            .unwrap();
-        assert!(
-            output.status.success(),
-            "{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    };
-    git(&["init", "-b", "main"]);
-    git(&["add", "--", ".changenote/config.json", "VERSION"]);
-    git(&["commit", "-m", "initial"]);
-    git(&["branch", "base"]);
-    add(root, "valid", Some("feat"), Bump::Minor, "Feature");
-    git(&["add", "--", ".changenote/valid.md"]);
-    git(&["commit", "-m", "typed note"]);
-    assert!(changenote::check(root, "base", false, None).unwrap().passed);
-    fs::write(
-        root.join(".changenote/valid.md"),
-        "---\ntype: minor\n$type: unknown\n---\nFeature",
-    )
-    .unwrap();
-    git(&["add", "--", ".changenote/valid.md"]);
-    git(&["commit", "-m", "invalid type"]);
-    assert!(changenote::check(root, "base", false, None).is_err());
-    assert!(changenote::check(root, "base", true, Some("Documentation only")).is_err());
-}
-
-#[test]
-fn malformed_metadata_is_rejected_and_type_package_remains_valid() {
-    for metadata in ["null", "[]", "{}", "42", "''"] {
-        assert!(parse_note(&format!("---\ntype: patch\n$type: {metadata}\n---\nFix")).is_err());
-    }
-    assert!(parse_note("---\ntype: patch\n$type: feat\n$type: fix\n---\nFix").is_err());
-    assert!(parse_note("---\n$type: feat\n---\nFix").is_err());
-    assert_eq!(
-        parse_note("---\r\ntype: patch\r\n$type: fix\r\n---\r\nFix")
-            .unwrap()
-            .packages["type"],
-        Bump::Patch
-    );
-}
-
-#[test]
 fn custom_sections_work_with_mixed_bumps_and_fixed_groups() {
     let dir = project(Some(sections()));
     let root = dir.path();

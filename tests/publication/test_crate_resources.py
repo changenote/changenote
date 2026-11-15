@@ -46,7 +46,10 @@ class CrateResources(unittest.TestCase):
                         self.assertTrue(path.is_file(), "Target is absent from the crate")
 
     def test_skill_has_one_package_local_source(self):
-        self.assertTrue((ROOT / "crates/changenote/SKILL.md").is_file())
+        self.assertEqual(list((ROOT / "crates").rglob("SKILL.md")), [
+            ROOT / "crates/changenote-skill/SKILL.md",
+        ])
+        self.assertFalse((ROOT / "crates/changenote/SKILL.md").exists())
         self.assertFalse((ROOT / "skills").exists())
         self.assertFalse((ROOT / "crates/changenote/skills").exists())
         self.assertFalse((ROOT / "scripts/sync-crate-resources.py").exists())
@@ -56,8 +59,9 @@ class CrateResources(unittest.TestCase):
         self.assertNotIn("package", workspace)
         self.assertEqual(workspace["workspace"]["members"], [
             "crates/changenote", "crates/changenote-core", "crates/changenote-cli",
+            "crates/changenote-skill",
         ])
-        for name in ("changenote-core", "changenote-cli"):
+        for name in ("changenote-core", "changenote-cli", "changenote-skill"):
             private = tomllib.loads((ROOT / "crates" / name / "Cargo.toml").read_text())
             self.assertIs(private["package"]["publish"], False)
             self.assertEqual(private["package"]["name"], name)
@@ -65,7 +69,8 @@ class CrateResources(unittest.TestCase):
         self.assertEqual(manifest["package"]["name"], "changenote")
         self.assertIsInstance(manifest["package"]["version"], str)
         included = manifest["package"]["include"]
-        for name in (*RESOURCE_COPIES, "SKILL.md", "src/main.rs",
+        self.assertIn("SKILL.md", included)  # Added by standalone Cargo assembly.
+        for name in (*RESOURCE_COPIES, "src/main.rs",
                      "tests/fixtures/planning/provenance/fixture/.changenote/config.json"):
             with self.subTest(name=name):
                 self.assertTrue(any(fnmatch.fnmatchcase(name, pattern) for pattern in included))

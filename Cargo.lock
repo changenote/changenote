@@ -96,6 +96,7 @@ dependencies = [
  "anyhow",
  "changenote-cli",
  "changenote-core",
+ "changenote-skill",
  "semver",
  "serde_json",
  "tempfile",
@@ -128,6 +129,10 @@ dependencies = [
  "tempfile",
  "toml_edit",
 ]
+
+[[package]]
+name = "changenote-skill"
+version = "0.0.0"
 
 [[package]]
 name = "clap"

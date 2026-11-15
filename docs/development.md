@@ -13,15 +13,16 @@ Action implementation, consumer examples, and integration tests are maintained i
 
 ## Repository layout
 
-The repository uses one Cargo workspace with three members. `changenote` is the public package. `changenote-core` and `changenote-cli` use `publish = false` and are not published separately. The Python distribution packages the same executable and does not use a uv workspace. The CLI supports release plans for other monorepos.
+The repository uses one Cargo workspace with four members. `changenote` is the public package. `changenote-core`, `changenote-cli`, and `changenote-skill` use `publish = false` and are not published separately. The Python distribution packages the same executable and does not use a uv workspace. The CLI supports release plans for other monorepos.
 
 - `Cargo.toml`: virtual Cargo workspace with resolver `3`.
 - `Cargo.lock`: shared Rust dependency lockfile.
 - `crates/changenote/Cargo.toml`: public Rust package metadata and release version.
 - `crates/changenote/src/`: library re-exports and executable entry point.
-- `crates/changenote-core/`: private release logic and unit tests.
-- `crates/changenote-cli/`: private command parsing, output, and dispatch.
-- `crates/changenote/tests/`: Rust integration tests and fixtures.
+- `crates/changenote-core/`: private release logic, unit tests, and core integration tests.
+- `crates/changenote-cli/`: private command parsing, output, dispatch, and argument unit tests.
+- `crates/changenote-skill/`: private embedded skill and its single Markdown source.
+- `crates/changenote/tests/`: public API, executable, and package-resource integration tests, with CLI planning fixtures.
 - `pyproject.toml`: maturin package metadata and build configuration.
 - `uv.lock`: Python project dependency lockfile.
 - `python/changenote/`: Python wrapper module for the Rust CLI.
@@ -32,7 +33,7 @@ The repository uses one Cargo workspace with three members. `changenote` is the 
 - `scripts/publish-crate.py`: repository-specific crates.io publication helper.
 - `scripts/package_crate.py`: temporary standalone Cargo package assembly.
 - `scripts/prepare-python-release.py`: validated release version preparation for crates and wheels.
-- `crates/changenote/SKILL.md`: the single source for the bundled agent skill.
+- `crates/changenote-skill/SKILL.md`: the single source for the bundled agent skill.
 - `tests/workflows/`, `tests/publication/`, `tests/python_release/`: CLI workflow and publication tests.
 
 ## Rust checks
@@ -47,14 +48,14 @@ cargo build --locked --release
 cargo run --locked -p changenote -- status
 ```
 
-The Rust package and executable names are `changenote`, so `cargo run --locked -p changenote -- status` works from the repository root. Rust build outputs go to root `target/`. The members have no separate lockfiles or inherited workspace versions. The private crates use version `0.0.0`; they do not have release plans. The public entry point supplies its package version and bundled skill to the CLI.
+The Rust package and executable names are `changenote`, so `cargo run --locked -p changenote -- status` works from the repository root. Rust build outputs go to root `target/`. The members have no separate lockfiles or inherited workspace versions. The private crates use version `0.0.0`; they do not have release plans. The public entry point supplies its package version and `changenote-skill`'s embedded Markdown to the CLI.
 
 To install from this checkout, run `cargo install --locked --path crates/changenote`.
 Registry installation remains `cargo install changenote --locked`.
 
 ### Package resources
 
-The agent skill has one source, `crates/changenote/SKILL.md`. Edit that file directly. Agents can run `changenote skill` to read the embedded Markdown without a source checkout. There is no root skill copy or synchronization script.
+The agent skill has one source, `crates/changenote-skill/SKILL.md`. Edit that file directly. The private `changenote-skill` crate embeds its bytes; the public entry point passes them to the CLI. Agents can run `changenote skill` to read the embedded Markdown without a source checkout. There is no root skill copy or synchronization script.
 
 Root `README.md`, `LICENSE`, `schema.json`, `docs/notes.md`, and `docs/swift.md` remain canonical for the other package resources. After changing one of those files, copy the current resources into the crate:
 
@@ -74,7 +75,9 @@ Cargo cannot publish dependencies on unpublished private crates. Use the assembl
 uv run --no-project python scripts/package_crate.py package --locked -p changenote
 ```
 
-The helper copies the public package into a temporary directory, adds the unchanged core modules and CLI source, and replaces private dependencies with their registry dependencies. It combines the local lockfile entries without changing registry dependency versions. The resulting archive has no private crate dependencies and supports `cargo install changenote --locked` without this helper. The source checkout is unchanged. Cargo outputs use root `target/`, unless `CARGO_TARGET_DIR` is set.
+The helper copies the public package into a temporary directory, adds the unchanged core modules, CLI source, and skill source, and replaces private dependencies with their registry dependencies. It also includes the skill Markdown and core integration tests. Core tests use the public library in this standalone archive; CLI argument unit tests stay with the CLI source. It combines the local lockfile entries without changing registry dependency versions. The resulting archive has no private crate dependencies and supports `cargo install changenote --locked` without this helper. The source checkout is unchanged. Cargo outputs use root `target/`, unless `CARGO_TARGET_DIR` is set.
+
+Core logic tests run against `changenote-core` directly. CLI argument tests run in `changenote-cli`. Public API compatibility, subprocess behavior, packaged resources, and their golden fixtures stay in `changenote`.
 
 The publication helper uses the same assembly process after its registry and credential checks. Historical single-package releases use their original manifests without assembly. Python builds use the workspace crates directly; maturin includes their sources in the source distribution.
 

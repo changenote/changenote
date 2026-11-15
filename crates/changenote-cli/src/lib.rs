@@ -310,3 +310,36 @@ pub fn main(version: &'static str, skill: &str) {
         std::process::exit(1);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    fn rejects(args: &[&str]) {
+        let error = Cli::command()
+            .try_get_matches_from(std::iter::once("changenote").chain(args.iter().copied()))
+            .unwrap_err();
+        assert_eq!(error.exit_code(), 2, "{args:?}");
+        assert!(error.use_stderr());
+        assert!(!error.to_string().is_empty());
+    }
+
+    #[test]
+    fn completion_rejects_missing_unsupported_and_extra_arguments() {
+        for args in [
+            vec!["completion"],
+            vec!["completion", "nu"],
+            vec!["completion", "bash", "extra"],
+        ] {
+            rejects(&args);
+        }
+    }
+
+    #[test]
+    fn skill_rejects_extra_arguments_and_unknown_options() {
+        for args in [vec!["skill", "extra"], vec!["skill", "--unknown"]] {
+            rejects(&args);
+        }
+    }
+}

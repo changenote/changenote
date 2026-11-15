@@ -28,6 +28,19 @@ class PackageCrate(unittest.TestCase):
                 (ROOT / "crates/changenote-cli/src/lib.rs").read_bytes(),
                 (crate / "src/cli.rs").read_bytes(),
             )
+            self.assertEqual(
+                (ROOT / "crates/changenote-skill/src/lib.rs").read_bytes(),
+                (crate / "src/skill.rs").read_bytes(),
+            )
+            self.assertEqual(
+                (ROOT / "crates/changenote-skill/SKILL.md").read_bytes(),
+                (crate / "SKILL.md").read_bytes(),
+            )
+            for source in (ROOT / "crates/changenote-core/tests").glob("*.rs"):
+                self.assertEqual(
+                    source.read_text().replace("use changenote_core as changenote;\n", ""),
+                    (crate / "tests" / f"core_{source.name}").read_text(),
+                )
             self.assertIn("extern crate changenote as changenote_core;", (crate / "src/main.rs").read_text())
             self.assertTrue((crate / "src/main.rs").read_bytes().endswith(
                 (ROOT / "crates/changenote/src/main.rs").read_bytes()
@@ -35,7 +48,10 @@ class PackageCrate(unittest.TestCase):
             for path in (ROOT / "crates/changenote").rglob("*"):
                 if path.is_file() and path.parent.name != "src" and path.name != "Cargo.toml":
                     relative = path.relative_to(ROOT / "crates/changenote")
-                    self.assertEqual(path.read_bytes(), (crate / relative).read_bytes())
+                    if relative == Path("tests/skill.rs"):
+                        self.assertTrue((crate / relative).read_bytes().endswith(path.read_bytes()))
+                    else:
+                        self.assertEqual(path.read_bytes(), (crate / relative).read_bytes())
 
             bundled = tomllib.loads((crate / "Cargo.toml").read_text())
             public = tomllib.loads(original_manifest.decode())

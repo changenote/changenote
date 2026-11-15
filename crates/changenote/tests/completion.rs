@@ -91,22 +91,6 @@ fn completion_ignores_root_configuration_and_does_not_change_files() {
 }
 
 #[test]
-fn completion_rejects_missing_unsupported_and_extra_arguments() {
-    let dir = tempfile::tempdir().unwrap();
-    for args in [
-        vec!["completion"],
-        vec!["completion", "nu"],
-        vec!["completion", "bash", "extra"],
-    ] {
-        let output = cli(dir.path(), &args);
-        assert_eq!(output.status.code(), Some(2), "{args:?}");
-        assert!(output.stdout.is_empty());
-        assert!(!output.stderr.is_empty());
-    }
-    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
-}
-
-#[test]
 fn completion_help_lists_the_supported_shells() {
     let dir = tempfile::tempdir().unwrap();
     let output = cli(dir.path(), &["completion", "--help"]);

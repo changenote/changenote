@@ -20,7 +20,7 @@ fn skill_prints_the_exact_bundled_markdown_without_configuration() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(output.stderr.is_empty());
-    assert_eq!(output.stdout, include_bytes!("../SKILL.md").as_slice());
+    assert_eq!(output.stdout, changenote_skill::SKILL.as_bytes());
     assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
 }
 
@@ -41,7 +41,7 @@ fn skill_ignores_root_configuration_and_local_skill_files() {
         let output = cli(dir.path(), &args);
         assert!(output.status.success(), "{args:?}");
         assert!(output.stderr.is_empty());
-        assert_eq!(output.stdout, include_bytes!("../SKILL.md").as_slice());
+        assert_eq!(output.stdout, changenote_skill::SKILL.as_bytes());
     }
 
     assert_eq!(fs::read_to_string(config).unwrap(), "invalid configuration");
@@ -63,18 +63,6 @@ fn skill_help_is_available_without_configuration() {
         let help = String::from_utf8(output.stdout).unwrap();
         assert!(help.contains("skill"));
         assert!(help.contains("Print the bundled agent skill"));
-    }
-    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
-}
-
-#[test]
-fn skill_rejects_extra_arguments_and_unknown_options() {
-    let dir = tempfile::tempdir().unwrap();
-    for args in [vec!["skill", "extra"], vec!["skill", "--unknown"]] {
-        let output = cli(dir.path(), &args);
-        assert_eq!(output.status.code(), Some(2), "{args:?}");
-        assert!(output.stdout.is_empty());
-        assert!(!output.stderr.is_empty());
     }
     assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
 }

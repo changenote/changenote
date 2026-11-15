@@ -20,6 +20,7 @@ include = [
 [dependencies]
 changenote-core = { path = "../changenote-core" }
 changenote-cli = { path = "../changenote-cli" }
+changenote-skill = { path = "../changenote-skill" }
 
 [dev-dependencies]
 anyhow = "1"

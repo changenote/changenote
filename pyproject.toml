@@ -27,6 +27,7 @@ cache-keys = [
     { file = "crates/changenote/**/*" },
     { file = "crates/changenote-core/**/*" },
     { file = "crates/changenote-cli/**/*" },
+    { file = "crates/changenote-skill/**/*" },
     { file = "README.md" },
     { file = "LICENSE" },
     { file = "schema.json" },

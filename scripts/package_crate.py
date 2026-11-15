@@ -11,7 +11,7 @@ import tomllib
 from contextlib import contextmanager
 from pathlib import Path
 
-PRIVATE_CRATES = ("changenote-core", "changenote-cli")
+PRIVATE_CRATES = ("changenote-core", "changenote-cli", "changenote-skill")
 
 
 def toml_value(value):
@@ -107,10 +107,22 @@ def prepared_crate(root):
         shutil.copytree(public, crate)
         shutil.copytree(root / "crates/changenote-core/src", crate / "src", dirs_exist_ok=True)
         shutil.copyfile(root / "crates/changenote-cli/src/lib.rs", crate / "src/cli.rs")
+        shutil.copyfile(root / "crates/changenote-skill/src/lib.rs", crate / "src/skill.rs")
+        shutil.copyfile(root / "crates/changenote-skill/SKILL.md", crate / "SKILL.md")
+        for source in (root / "crates/changenote-core/tests").glob("*.rs"):
+            # Integration tests use the public library in the standalone archive.
+            (crate / "tests" / f"core_{source.name}").write_text(
+                source.read_text().replace("use changenote_core as changenote;\n", "")
+            )
+        skill_test = crate / "tests/skill.rs"
+        skill_test.write_text(
+            '#[path = "../src/skill.rs"]\nmod changenote_skill;\n\n' + skill_test.read_text()
+        )
         main = crate / "src/main.rs"
         main.write_text(
             'extern crate changenote as changenote_core;\n'
-            '#[path = "cli.rs"]\nmod changenote_cli;\n\n' + main.read_text()
+            '#[path = "cli.rs"]\nmod changenote_cli;\n'
+            '#[path = "skill.rs"]\nmod changenote_skill;\n\n' + main.read_text()
         )
         (crate / "Cargo.toml").write_text(
             bundled_manifest(manifest_path.read_text(), implementations)

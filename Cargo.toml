@@ -1,3 +1,8 @@
 [workspace]
-members = ["crates/changenote", "crates/changenote-core", "crates/changenote-cli"]
+members = [
+    "crates/changenote",
+    "crates/changenote-core",
+    "crates/changenote-cli",
+    "crates/changenote-skill",
+]
 resolver = "3"
