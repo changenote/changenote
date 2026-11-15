@@ -14,7 +14,7 @@ enum VersionFile {
         content: String,
         span: Range<usize>,
     },
-    Toml(DocumentMut, &'static str),
+    Toml(DocumentMut, &'static [&'static str]),
     Xcconfig {
         content: String,
         span: Range<usize>,
@@ -32,15 +32,12 @@ impl VersionFile {
             },
             Some(name @ ("Cargo.toml" | "pyproject.toml")) => {
                 let document = content.parse::<DocumentMut>()?;
-                let section = if name == "Cargo.toml" {
-                    "package"
+                let version_path: &'static [&'static str] = if name == "Cargo.toml" {
+                    &["package", "version"]
                 } else {
-                    "project"
-                };
-                if section == "project" {
                     ensure!(
                         !document
-                            .get(section)
+                            .get("project")
                             .and_then(|item| item.get("dynamic"))
                             .and_then(|item| item.as_array())
                             .is_some_and(|values| values
@@ -48,8 +45,22 @@ impl VersionFile {
                                 .any(|value| value.as_str() == Some("version"))),
                         "dynamic project.version is not supported"
                     );
-                }
-                Self::Toml(document, section)
+                    if document
+                        .get("project")
+                        .and_then(|item| item.get("version"))
+                        .is_none()
+                        && document
+                            .get("tool")
+                            .and_then(|item| item.get("poetry"))
+                            .and_then(|item| item.get("version"))
+                            .is_some()
+                    {
+                        &["tool", "poetry", "version"]
+                    } else {
+                        &["project", "version"]
+                    }
+                };
+                Self::Toml(document, version_path)
             }
             _ if path.extension().is_some_and(|ext| ext == "xcconfig") => Self::Xcconfig {
                 span: xcconfig_version_span(&content)?,
@@ -57,21 +68,22 @@ impl VersionFile {
             },
             _ => Self::Plain,
         };
-        let text =
-            match &file {
-                Self::Plain => content.trim().to_owned(),
-                Self::Xcconfig { content, span } => content[span.clone()].to_owned(),
-                Self::Json { document, .. } => document
+        let text = match &file {
+            Self::Plain => content.trim().to_owned(),
+            Self::Xcconfig { content, span } => content[span.clone()].to_owned(),
+            Self::Json { document, .. } => {
+                document
                     .get("version")
                     .and_then(JsonValue::as_string)
-                    .context("package.json requires a string version field")?,
-                Self::Toml(document, section) => document
-                    .get(section)
-                    .and_then(|item| item.get("version"))
-                    .and_then(|item| item.as_str())
-                    .with_context(|| format!("{section}.version must be an explicit string"))?
-                    .to_owned(),
-            };
+                    .context("package.json requires a string version field")?
+            }
+            Self::Toml(document, version_path) => version_path
+                .iter()
+                .try_fold(document.as_item(), |item, key| item.get(key))
+                .and_then(|item| item.as_str())
+                .with_context(|| format!("{} must be an explicit string", version_path.join(".")))?
+                .to_owned(),
+        };
         let version = Version::parse(&text)?;
         ensure!(
             version.pre.is_empty() && version.build.is_empty(),
@@ -170,9 +182,11 @@ pub(crate) fn version_content(path: &Path, version: &Version, legacy: bool) -> R
                 Ok(content)
             }
         }
-        VersionFile::Toml(mut document, section) => {
-            let value = document[section]["version"]
-                .as_value_mut()
+        VersionFile::Toml(mut document, version_path) => {
+            let value = version_path
+                .iter()
+                .try_fold(document.as_item_mut(), |item, key| item.get_mut(key))
+                .and_then(|item| item.as_value_mut())
                 .context("missing version")?;
             let decor = value.decor().clone();
             *value = toml_edit::Value::from(version.to_string());

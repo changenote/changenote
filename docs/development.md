@@ -82,6 +82,15 @@ The tests cover offline standalone and workspace refreshes, frozen-lockfile vali
 pnpm 12.21.0 and Bun 1.4.4 were verified. Bun must support `install --offline`.
 Fake-tool CLI tests always check command selection and recovery without these installations.
 
+The real Poetry test checks that version-only releases keep `poetry.lock` unchanged and pass `poetry check --lock` for both version fields.
+It is skipped when Poetry is missing. Run it in an isolated environment without changing this project's dependencies:
+
+```sh
+uv run --no-project --with poetry==2.5.1 cargo test --locked -p changenote-core --test lockfiles real_poetry -- --show-output
+```
+
+Poetry 2.5.1 was verified. Check that the output does not contain `Skipping real poetry test`.
+
 To install from this checkout, run `cargo install --locked --path crates/changenote`.
 Registry installation remains `cargo install changenote --locked`.
 

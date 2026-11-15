@@ -46,6 +46,72 @@ fn git(root: &Path, args: &[&str]) {
 }
 
 #[test]
+fn init_adopts_poetry_and_releases_without_a_package_manager() {
+    let dir = tempfile::tempdir().unwrap();
+    let before = "# Package\n[tool.poetry]\nname = 'pkg'\nversion = \"1.2.3\" # release\n";
+    fs::write(dir.path().join("pyproject.toml"), before).unwrap();
+    fs::write(dir.path().join("poetry.lock"), "unchanged lock\n").unwrap();
+    let empty_path = dir.path().join("bin");
+    fs::create_dir(&empty_path).unwrap();
+    for args in [
+        vec!["init", "--name", "pkg", "--version-file", "pyproject.toml"],
+        vec![
+            "add",
+            "change",
+            "--package",
+            "pkg",
+            "--bump",
+            "minor",
+            "--message",
+            "New feature",
+        ],
+        vec!["status"],
+        vec!["doctor"],
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_changenote"))
+            .current_dir(dir.path())
+            .env("PATH", &empty_path)
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join("pyproject.toml")).unwrap(),
+            before
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join("poetry.lock")).unwrap(),
+            "unchanged lock\n"
+        );
+    }
+    let output = Command::new(env!("CARGO_BIN_EXE_changenote"))
+        .current_dir(dir.path())
+        .env("PATH", &empty_path)
+        .arg("version")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        fs::read_to_string(dir.path().join("pyproject.toml")).unwrap(),
+        before.replace("1.2.3", "1.3.0")
+    );
+    assert_eq!(
+        fs::read_to_string(dir.path().join("poetry.lock")).unwrap(),
+        "unchanged lock\n"
+    );
+    assert!(!dir.path().join("VERSION").exists());
+    assert!(!dir.path().join(".changenote/change.md").exists());
+}
+
+#[test]
 fn tag_validates_manifest_version() {
     let dir = project("Cargo.toml", "[package]\nversion = '1.2.3'\n");
     git(dir.path(), &["init", "--initial-branch=main"]);

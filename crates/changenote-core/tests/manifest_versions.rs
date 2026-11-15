@@ -99,6 +99,21 @@ fn reads_and_updates_manifest_versions() {
             "[project]\nname = 'pkg'\nversion = \"1.3.0\" # release\ndependencies = ['other==1.2.3']\n\n[tool.example]\nversion = '1.2.3'\n",
         ),
         (
+            "pyproject.toml",
+            "# Poetry\n[tool.poetry]\nname = 'pkg'\nversion = \"1.2.3\" # release\n\n[tool.poetry.dependencies]\nother = '1.2.3'\n\n[tool.example]\nversion = '1.2.3'\n",
+            "# Poetry\n[tool.poetry]\nname = 'pkg'\nversion = \"1.3.0\" # release\n\n[tool.poetry.dependencies]\nother = '1.2.3'\n\n[tool.example]\nversion = '1.2.3'\n",
+        ),
+        (
+            "pyproject.toml",
+            "[project]\nname = 'pkg'\ndynamic = ['dependencies']\n\n[tool.poetry]\nversion = \"1.2.3\" # release\n",
+            "[project]\nname = 'pkg'\ndynamic = ['dependencies']\n\n[tool.poetry]\nversion = \"1.3.0\" # release\n",
+        ),
+        (
+            "pyproject.toml",
+            "[project]\nversion = \"1.2.3\" # release\n\n[tool.poetry]\nversion = '0.9.0' # ignored\n",
+            "[project]\nversion = \"1.3.0\" # release\n\n[tool.poetry]\nversion = '0.9.0' # ignored\n",
+        ),
+        (
             "package.json",
             "{\n  \"name\": \"pkg\",\n  \"version\": \"1.2.3\",\n  \"dependencies\": {\n    \"other\": \"1.2.3\"\n  }\n}\n",
             "{\n  \"name\": \"pkg\",\n  \"version\": \"1.3.0\",\n  \"dependencies\": {\n    \"other\": \"1.2.3\"\n  }\n}\n",
@@ -218,7 +233,30 @@ fn rejects_invalid_or_indirect_manifest_versions_without_writes() {
             "pyproject.toml",
             "[project]\nversion = '1.2.3'\ndynamic = ['version']\n",
         ),
-        ("pyproject.toml", "[tool.poetry]\nversion = '1.2.3'\n"),
+        ("pyproject.toml", "[tool.poetry]\nname = 'pkg'\n"),
+        ("pyproject.toml", "[tool.poetry]\nversion = 123\n"),
+        ("pyproject.toml", "[tool.poetry]\nversion = 'banana'\n"),
+        (
+            "pyproject.toml",
+            "[tool.poetry]\nversion = '1.2.3-beta.1'\n",
+        ),
+        ("pyproject.toml", "[tool.poetry]\nversion = '1.2.3+build'\n"),
+        (
+            "pyproject.toml",
+            "[project]\ndynamic = ['version']\n[tool.poetry]\nversion = '1.2.3'\n",
+        ),
+        (
+            "pyproject.toml",
+            "[project]\nversion = 123\n[tool.poetry]\nversion = '1.2.3'\n",
+        ),
+        (
+            "pyproject.toml",
+            "[project]\nversion = 'banana'\n[tool.poetry]\nversion = '1.2.3'\n",
+        ),
+        (
+            "pyproject.toml",
+            "[project]\nversion = '1.2.3'\ndynamic = ['version']\n[tool.poetry]\nversion = '1.2.3'\n",
+        ),
         ("pyproject.toml", "[project]\nversion = '1.2.3+build'\n"),
         ("package.json", "{\"name\":\"pkg\"}"),
         ("package.json", "{\"version\":123}"),
