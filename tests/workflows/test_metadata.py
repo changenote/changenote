@@ -109,6 +109,50 @@ class Metadata(unittest.TestCase):
         ):
             self.assertIn(gate, distribution)
 
+    def test_ci_checks_source_archive_with_release_builder(self):
+        ci = read_yaml(ROOT / ".github/workflows/ci.yml")["jobs"]["python"]
+        release = read_yaml(ROOT / ".github/workflows/release.yml")
+        release_build = next(
+            step for step in release["jobs"]["wheels"]["steps"]
+            if step.get("name") == "Build source archive"
+        )
+        steps = ci["steps"]
+        builds = [
+            step for step in steps
+            if step.get("name") == "Build release source archive"
+        ]
+        self.assertEqual(
+            len(builds), 1, "CI must test the release source archive builder"
+        )
+        build = builds[0]
+        self.assertEqual(build["uses"], release_build["uses"])
+        self.assertEqual(
+            build["with"]["maturin-version"],
+            release_build["with"]["maturin-version"],
+            "CI and release must use the same source archive builder version",
+        )
+        self.assertRegex(
+            build["with"]["maturin-version"], r"^v[0-9]+\.[0-9]+\.[0-9]+$"
+        )
+        self.assertEqual(build["with"]["command"], "sdist")
+        self.assertEqual(build["with"]["args"], "--out dist/python-release")
+        checks = [
+            step for step in steps
+            if step.get("name") == "Check release source archive"
+        ]
+        self.assertEqual(len(checks), 1)
+        check = checks[0]
+        self.assertEqual(
+            check["run"],
+            "uv run --no-project python scripts/check_python_sdist.py "
+            "dist/python-release/*.tar.gz",
+        )
+        self.assertLess(steps.index(build), steps.index(check))
+        self.assertNotIn("continue-on-error", ci)
+        for step in (build, check):
+            self.assertNotIn("if", step)
+            self.assertNotIn("continue-on-error", step)
+
     def test_changelog_fixture_newlines_are_preserved(self):
         config = tomllib.loads((ROOT / "prek.toml").read_text())
         hook = next(

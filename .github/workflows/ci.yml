@@ -45,6 +45,14 @@ jobs:
           python-version: "3.14"
       - run: uv sync --locked
       - run: uv run --locked python -m unittest discover -s python/tests
+      - name: Build release source archive
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
+        with:
+          maturin-version: v1.16.0
+          command: sdist
+          args: --out dist/python-release
+      - name: Check release source archive
+        run: uv run --no-project python scripts/check_python_sdist.py dist/python-release/*.tar.gz
       - run: uv build --out-dir dist/python-binary
       - run: uv run --no-project python scripts/check_python_sdist.py dist/python-binary/*.tar.gz
       - run: uvx --isolated --no-index --find-links dist/python-binary changenote --help
