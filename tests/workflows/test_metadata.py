@@ -95,7 +95,7 @@ class Metadata(unittest.TestCase):
         ):
             self.assertIn(gate, rust)
         archive = next(step for step in jobs["check"]["steps"] if step.get("name") == "Check crate archive")
-        self.assertIn("cargo package --locked -p changenote", archive["run"])
+        self.assertIn("uv run --no-project python scripts/package_crate.py package --locked -p changenote", archive["run"])
         self.assertIn("tar -xzf target/package/changenote-*.crate", archive["run"])
         self.assertIn('cargo test --locked --manifest-path "$archive"/changenote-*/Cargo.toml', archive["run"])
         distribution = [step.get("run") for step in jobs["python"]["steps"]]

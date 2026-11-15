@@ -94,8 +94,31 @@ name = "changenote"
 version = "0.13.1"
 dependencies = [
  "anyhow",
+ "changenote-cli",
+ "changenote-core",
+ "semver",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "changenote-cli"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "changenote-core",
  "clap",
  "clap_complete",
+ "semver",
+ "serde_json",
+]
+
+[[package]]
+name = "changenote-core"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "clap",
  "getrandom",
  "globset",
  "semver",

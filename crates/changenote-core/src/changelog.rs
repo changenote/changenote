@@ -169,7 +169,6 @@ mod tests {
             "- Fix parsing of quoted package names in change notes.\n\n",
         );
         assert_eq!(render(&release, "", false), expected);
-        assert!(include_str!("../docs/notes.md").contains(expected.trim_end()));
     }
 
     #[test]

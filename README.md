@@ -229,7 +229,9 @@ Primary and additional version files must contain explicit stable SemVer version
 
 ## Development
 
-This repository uses one Cargo workspace with one Rust package in `crates/changenote/`.
+This repository uses one Cargo workspace with three Rust packages.
+`crates/changenote/` contains the public entry points, `crates/changenote-core/` contains release logic, and `crates/changenote-cli/` contains command handling.
+The core and CLI packages are private and are not published separately.
 The Python distribution packages the same executable and does not use a uv workspace.
 See the [development guide](https://github.com/changenote/changenote/blob/main/docs/development.md) for the layout, test commands, and maintainer release procedures.
 

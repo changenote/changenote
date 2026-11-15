@@ -1,0 +1,20 @@
+[package]
+name = "changenote-core"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+getrandom = "0.4"
+clap = { version = "4", features = ["derive"] }
+semver = { version = "1", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
+toml_edit = "0.25"
+serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
+globset = "0.4.20"
+
+[dev-dependencies]
+tempfile = "3"

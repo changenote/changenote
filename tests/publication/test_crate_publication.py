@@ -5,6 +5,7 @@ import io
 import json
 import os
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -13,7 +14,8 @@ from urllib.error import HTTPError, URLError
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts/publish-crate.py"
 spec = importlib.util.spec_from_file_location("crate_publication", SCRIPT)
 publication = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(publication)
+with patch.object(sys, "path", [str(SCRIPT.parent), *sys.path]):
+    spec.loader.exec_module(publication)
 
 
 class CratePublication(unittest.TestCase):
@@ -22,7 +24,7 @@ class CratePublication(unittest.TestCase):
         self.version = "1.2.3"
         self.url = "https://crates.io/api/v1/crates/changenote/1.2.3"
         self.open = self.enterContext(patch.object(publication, "urlopen"))
-        self.cargo = self.enterContext(patch.object(publication.subprocess, "run"))
+        self.cargo = self.enterContext(patch.object(publication, "run_cargo"))
         self.enterContext(
             patch.dict(os.environ, {"CARGO_REGISTRY_TOKEN": "test-token"})
         )
@@ -43,8 +45,8 @@ class CratePublication(unittest.TestCase):
         self.missing()
         publication.publish(self.root, self.version)
         self.cargo.assert_called_once_with(
+            self.root,
             [
-                "cargo",
                 "publish",
                 "--locked",
                 "--registry",
@@ -53,8 +55,6 @@ class CratePublication(unittest.TestCase):
                 "changenote",
                 "--allow-dirty",
             ],
-            cwd=self.root,
-            check=True,
         )
 
     def test_existing_version_is_skipped_without_credentials(self):

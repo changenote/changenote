@@ -13,12 +13,14 @@ Action implementation, consumer examples, and integration tests are maintained i
 
 ## Repository layout
 
-The repository uses one Cargo workspace with one member, `crates/changenote`. The Python distribution packages its executable and does not use a uv workspace. The CLI supports release plans for other monorepos.
+The repository uses one Cargo workspace with three members. `changenote` is the public package. `changenote-core` and `changenote-cli` use `publish = false` and are not published separately. The Python distribution packages the same executable and does not use a uv workspace. The CLI supports release plans for other monorepos.
 
 - `Cargo.toml`: virtual Cargo workspace with resolver `3`.
 - `Cargo.lock`: shared Rust dependency lockfile.
-- `crates/changenote/Cargo.toml`: Rust package metadata, explicit version, and dependencies.
-- `crates/changenote/src/`: Rust CLI and release logic.
+- `crates/changenote/Cargo.toml`: public Rust package metadata and release version.
+- `crates/changenote/src/`: library re-exports and executable entry point.
+- `crates/changenote-core/`: private release logic and unit tests.
+- `crates/changenote-cli/`: private command parsing, output, and dispatch.
 - `crates/changenote/tests/`: Rust integration tests and fixtures.
 - `pyproject.toml`: maturin package metadata and build configuration.
 - `uv.lock`: Python project dependency lockfile.
@@ -28,6 +30,7 @@ The repository uses one Cargo workspace with one member, `crates/changenote`. Th
 - `.github/workflows/`: CLI checks, release routing, and CLI registry publication.
 - `scripts/route-release.py`: repository-specific release routing and preview checks.
 - `scripts/publish-crate.py`: repository-specific crates.io publication helper.
+- `scripts/package_crate.py`: temporary standalone Cargo package assembly.
 - `scripts/prepare-python-release.py`: validated release version preparation for crates and wheels.
 - `crates/changenote/SKILL.md`: the single source for the bundled agent skill.
 - `tests/workflows/`, `tests/publication/`, `tests/python_release/`: CLI workflow and publication tests.
@@ -44,7 +47,7 @@ cargo build --locked --release
 cargo run --locked -p changenote -- status
 ```
 
-The Rust package and executable names are `changenote`, so `cargo run --locked -p changenote -- status` works from the repository root. Rust build outputs go to root `target/`. The member has no separate lockfile or inherited workspace version.
+The Rust package and executable names are `changenote`, so `cargo run --locked -p changenote -- status` works from the repository root. Rust build outputs go to root `target/`. The members have no separate lockfiles or inherited workspace versions. The private crates use version `0.0.0`; they do not have release plans. The public entry point supplies its package version and bundled skill to the CLI.
 
 To install from this checkout, run `cargo install --locked --path crates/changenote`.
 Registry installation remains `cargo install changenote --locked`.
@@ -60,8 +63,20 @@ cp README.md LICENSE schema.json crates/changenote/
 cp docs/notes.md docs/swift.md crates/changenote/docs/
 ```
 
-Include the updated copies in the same commit. Publication tests compare their bytes and reject missing or stale copies. Documentation links use absolute repository URLs when the target guide is not shipped in the crate. The crate includes these resources and the hidden `.changenote` planning fixtures, so extracted Cargo and Python source archives need no repository resource paths or runtime downloads. CI packages the crate and runs its Rust tests from an extracted archive outside the checkout.
+Include the updated copies in the same commit. Publication tests compare their bytes and reject missing or stale copies. Documentation links use absolute repository URLs when the target guide is not shipped in the crate. The crate includes these resources and the hidden `.changenote` planning fixtures, so extracted Cargo and Python source archives need no repository resource paths or runtime downloads. CI assembles the public crate and runs its Rust tests from an extracted archive outside the checkout.
 The exact changelog fixtures keep their final blank-line separator; `.gitattributes` and the newline hook preserve these bytes.
+
+### Cargo archive assembly
+
+Cargo cannot publish dependencies on unpublished private crates. Use the assembly helper instead of direct `cargo package` or `cargo publish` commands for the current workspace:
+
+```sh
+uv run --no-project python scripts/package_crate.py package --locked -p changenote
+```
+
+The helper copies the public package into a temporary directory, adds the unchanged core modules and CLI source, and replaces private dependencies with their registry dependencies. It combines the local lockfile entries without changing registry dependency versions. The resulting archive has no private crate dependencies and supports `cargo install changenote --locked` without this helper. The source checkout is unchanged. Cargo outputs use root `target/`, unless `CARGO_TARGET_DIR` is set.
+
+The publication helper uses the same assembly process after its registry and credential checks. Historical single-package releases use their original manifests without assembly. Python builds use the workspace crates directly; maturin includes their sources in the source distribution.
 
 ## Workflow and publication checks
 
@@ -142,7 +157,7 @@ The CLI workflow builds the CLI instead of installing it and does not push versi
 Registry publication stays in this repository. The crates.io job uses `scripts/publish-crate.py`; it is not a shared Action helper.
 The Action repository's `/release` entry point instead installs its separate trusted CLI pin.
 
-The CLI workflow publishes the Rust package from the validated release commit to crates.io with `cargo publish --locked` and Trusted Publishing. The `rust-lang/crates-io-auth-action` Action uses GitHub OIDC to obtain a short-lived token. Only the crates.io and PyPI upload jobs have `id-token: write`. The crates.io upload step receives its short-lived token through the `CARGO_REGISTRY_TOKEN` environment variable. No crates.io token secret is required. The workflow also builds Python distributions from that commit and uploads them to PyPI with `uv publish --trusted-publishing always` and GitHub OIDC, without a PyPI token secret. See the [Python distribution guide](../python/README.md) for supported platforms and required PyPI settings. This routing policy is repository-specific.
+The CLI workflow assembles the standalone Rust package from the validated release commit, then publishes it to crates.io with `cargo publish --locked` and Trusted Publishing. The `rust-lang/crates-io-auth-action` Action uses GitHub OIDC to obtain a short-lived token. Only the crates.io and PyPI upload jobs have `id-token: write`. The crates.io upload step receives its short-lived token through the `CARGO_REGISTRY_TOKEN` environment variable. No crates.io token secret is required. The workflow also builds Python distributions from that commit and uploads them to PyPI with `uv publish --trusted-publishing always` and GitHub OIDC, without a PyPI token secret. See the [Python distribution guide](../python/README.md) for supported platforms and required PyPI settings. This routing policy is repository-specific.
 
 ## Source-link rollout
 

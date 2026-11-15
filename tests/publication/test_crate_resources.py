@@ -54,7 +54,13 @@ class CrateResources(unittest.TestCase):
     def test_workspace_and_package_include_required_inputs(self):
         workspace = tomllib.loads((ROOT / "Cargo.toml").read_text())
         self.assertNotIn("package", workspace)
-        self.assertEqual(workspace["workspace"]["members"], ["crates/changenote"])
+        self.assertEqual(workspace["workspace"]["members"], [
+            "crates/changenote", "crates/changenote-core", "crates/changenote-cli",
+        ])
+        for name in ("changenote-core", "changenote-cli"):
+            private = tomllib.loads((ROOT / "crates" / name / "Cargo.toml").read_text())
+            self.assertIs(private["package"]["publish"], False)
+            self.assertEqual(private["package"]["name"], name)
         manifest = tomllib.loads((ROOT / "crates/changenote/Cargo.toml").read_text())
         self.assertEqual(manifest["package"]["name"], "changenote")
         self.assertIsInstance(manifest["package"]["version"], str)
@@ -67,6 +73,9 @@ class CrateResources(unittest.TestCase):
         python = tomllib.loads((ROOT / "pyproject.toml").read_text())
         self.assertEqual(python["tool"]["maturin"]["manifest-path"],
                          "crates/changenote/Cargo.toml")
+        cache_files = [entry["file"] for entry in python["tool"]["uv"]["cache-keys"]]
+        for member in workspace["workspace"]["members"]:
+            self.assertIn(f"{member}/**/*", cache_files)
 
 
 if __name__ == "__main__":

@@ -61,9 +61,12 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.14"
       - name: Check crate archive
         run: |
-          cargo package --locked -p changenote
+          uv run --no-project python scripts/package_crate.py package --locked -p changenote
           archive=$(mktemp -d)
           trap 'rm -rf "$archive"' EXIT
           tar -xzf target/package/changenote-*.crate -C "$archive"

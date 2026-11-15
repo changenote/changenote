@@ -29,6 +29,26 @@ fn input(root: &Path, args: &[&str], content: &[u8]) -> Output {
 }
 
 #[test]
+fn entry_point_reports_the_public_package_name_and_version() {
+    let dir = tempfile::tempdir().unwrap();
+    let version = cli(dir.path(), &["--version"]);
+    assert!(version.status.success());
+    assert!(version.stderr.is_empty());
+    assert_eq!(
+        String::from_utf8(version.stdout).unwrap(),
+        format!("changenote {}\n", env!("CARGO_PKG_VERSION"))
+    );
+    let help = cli(dir.path(), &["--help"]);
+    assert!(help.status.success());
+    assert!(
+        String::from_utf8(help.stdout)
+            .unwrap()
+            .contains("Usage: changenote")
+    );
+    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
+}
+
+#[test]
 fn init_adopts_existing_sources_without_changing_bytes() {
     for (path, content) in [
         (
