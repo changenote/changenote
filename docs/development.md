@@ -5,6 +5,7 @@ For release automation in another repository, use the [GitHub Actions guide](htt
 Action implementation, consumer examples, and integration tests are maintained in [changenote/action](https://github.com/changenote/action).
 
 - [Repository layout](#repository-layout)
+- [Documentation site](#documentation-site)
 - [Rust checks](#rust-checks)
 - [Workflow and publication checks](#workflow-and-publication-checks)
 - [Python distribution](#python-distribution)
@@ -26,16 +27,35 @@ The repository uses one Cargo workspace with four members. `changenote` is the p
 - `crates/changenote/tests/`: a thin executable test harness and consolidated public API and package-resource checks.
 - `pyproject.toml`: maturin package metadata and build configuration.
 - `uv.lock`: Python project dependency lockfile.
+- `zensical.toml`: documentation site configuration and navigation.
+- `docs/`: documentation site pages and release guides.
 - `python/changenote/`: Python wrapper module for the Rust CLI.
 - `python/tests/`: wrapper tests.
 - `.changenote/`: repository-level notes and release configuration.
-- `.github/workflows/`: CLI checks, release routing, and CLI registry publication.
+- `.github/workflows/`: CLI checks, documentation deployment, release routing, and CLI registry publication.
 - `scripts/route-release.py`: repository-specific release routing and preview checks.
 - `scripts/publish-crate.py`: repository-specific crates.io publication helper.
 - `scripts/package_crate.py`: temporary standalone Cargo package assembly.
 - `scripts/prepare-python-release.py`: validated release version preparation for crates and wheels.
 - `crates/changenote-skill/SKILL.md`: the single source for the bundled agent skill.
 - `tests/workflows/`, `tests/publication/`, `tests/python_release/`: CLI workflow and publication tests.
+
+## Documentation site
+
+The site uses Zensical and the Markdown files in `docs/`.
+Add each site page to `nav` in `zensical.toml`.
+
+Install the documentation tools and build the site from the repository root:
+
+```sh
+uv sync --locked --only-dev
+uv run --locked --no-sync zensical build --clean
+```
+
+The build writes to `site/`, which Git ignores.
+To preview the site, run `uv run --locked --no-sync zensical serve`.
+The Documentation workflow builds and deploys the site on pushes to `main` or `master`.
+Set the repository's GitHub Pages source to GitHub Actions before deployment.
 
 ## Rust checks
 
@@ -172,7 +192,7 @@ The CLI workflow builds the CLI instead of installing it and does not push versi
 Registry publication stays in this repository. The crates.io job uses `scripts/publish-crate.py`; it is not a shared Action helper.
 The Action repository's `/release` entry point instead installs its separate trusted CLI pin.
 
-The CLI workflow assembles the standalone Rust package from the validated release commit, then publishes it to crates.io with `cargo publish --locked` and Trusted Publishing. The `rust-lang/crates-io-auth-action` Action uses GitHub OIDC to obtain a short-lived token. Only the crates.io and PyPI upload jobs have `id-token: write`. The crates.io upload step receives its short-lived token through the `CARGO_REGISTRY_TOKEN` environment variable. No crates.io token secret is required. The workflow also builds Python distributions from that commit and uploads them to PyPI with `uv publish --trusted-publishing always` and GitHub OIDC, without a PyPI token secret. See the [Python distribution guide](../python/README.md) for supported platforms and required PyPI settings. This routing policy is repository-specific.
+The CLI workflow assembles the standalone Rust package from the validated release commit, then publishes it to crates.io with `cargo publish --locked` and Trusted Publishing. The `rust-lang/crates-io-auth-action` Action uses GitHub OIDC to obtain a short-lived token. Only the crates.io and PyPI upload jobs have `id-token: write`. The crates.io upload step receives its short-lived token through the `CARGO_REGISTRY_TOKEN` environment variable. No crates.io token secret is required. The workflow also builds Python distributions from that commit and uploads them to PyPI with `uv publish --trusted-publishing always` and GitHub OIDC, without a PyPI token secret. See the [Python distribution guide](https://github.com/changenote/changenote/blob/main/python/README.md) for supported platforms and required PyPI settings. This routing policy is repository-specific.
 
 ## Source-link rollout
 
@@ -208,4 +228,4 @@ After the first crates.io publication, users can install the CLI with `cargo ins
 
 ### PyPI
 
-The existing [changenote PyPI project](https://pypi.org/project/changenote/) is the publication target. The Release workflow builds platform wheels with maturin Action and publishes with `uv publish` and Trusted Publishing. Before enabling uploads, the PyPI project owner must configure a GitHub Trusted Publisher for owner `changenote`, repository `changenote`, workflow filename `release.yml`, and environment `pypi`. Uploads fail if this trust is absent or does not match. After a successful publication, users on supported platforms can run `uvx changenote status`. See the [Python distribution guide](../python/README.md).
+The existing [changenote PyPI project](https://pypi.org/project/changenote/) is the publication target. The Release workflow builds platform wheels with maturin Action and publishes with `uv publish` and Trusted Publishing. Before enabling uploads, the PyPI project owner must configure a GitHub Trusted Publisher for owner `changenote`, repository `changenote`, workflow filename `release.yml`, and environment `pypi`. Uploads fail if this trust is absent or does not match. After a successful publication, users on supported platforms can run `uvx changenote status`. See the [Python distribution guide](https://github.com/changenote/changenote/blob/main/python/README.md).

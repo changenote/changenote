@@ -34,3 +34,8 @@ cache-keys = [
     { file = "docs/notes.md" },
     { file = "docs/swift.md" },
 ]
+
+[dependency-groups]
+dev = [
+    "zensical>=0.1.1",
+]
