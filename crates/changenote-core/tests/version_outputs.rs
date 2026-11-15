@@ -78,6 +78,29 @@ fn updates_all_formats_and_preserves_saved_batch_shape() {
 }
 
 #[test]
+fn updates_poetry_as_an_additional_version_output() {
+    let dir = fixture(json!(["pyproject.toml"]));
+    let before = "[tool.poetry]\nversion = \"1.2.3\" # release\n";
+    fs::write(dir.path().join("pyproject.toml"), before).expect("write Poetry version output");
+    fs::write(dir.path().join("poetry.lock"), "unchanged lock\n")
+        .expect("write Poetry lockfile sentinel");
+    assert_eq!(
+        changenote::status(dir.path()).expect("plan release with Poetry version output")[0]
+            .version
+            .to_string(),
+        "1.2.4"
+    );
+    assert_eq!(read(dir.path(), "pyproject.toml"), before);
+    changenote::version(dir.path()).expect("update primary and Poetry version output");
+    assert_eq!(read(dir.path(), "VERSION"), "1.2.4\n");
+    assert_eq!(
+        read(dir.path(), "pyproject.toml"),
+        before.replace("1.2.3", "1.2.4")
+    );
+    assert_eq!(read(dir.path(), "poetry.lock"), "unchanged lock\n");
+}
+
+#[test]
 fn rejects_unsafe_overlapping_missing_and_mismatched_outputs_without_writes() {
     for outputs in [
         json!(null),
