@@ -1,174 +1,93 @@
----
-icon: lucide/rocket
----
+# Quickstart
 
-# Get started
+Use changenote to turn Markdown change notes into versions, changelogs, and local release tags.
+This guide uses one package with a plain-text `VERSION` file.
+[Install changenote](installation.md) before you start.
 
-For full documentation visit [zensical.org](https://zensical.org/docs/).
+Run commands from your project's Git repository root.
+To select another root, use `changenote --root PATH <command>`.
 
-## Commands
+## 1. Initialize a package
 
-* [`zensical new`][new] - Create a new project
-* [`zensical serve`][serve] - Start local web server
-* [`zensical build`][build] - Build your site
-
-  [new]: https://zensical.org/docs/usage/new/
-  [serve]: https://zensical.org/docs/usage/preview/
-  [build]: https://zensical.org/docs/usage/build/
-
-## Examples
-
-### Admonitions
-
-> Go to [documentation](https://zensical.org/docs/authoring/admonitions/)
-
-!!! note
-
-    This is a **note** admonition. Use it to provide helpful information.
-
-!!! warning
-
-    This is a **warning** admonition. Be careful!
-
-### Details
-
-> Go to [documentation](https://zensical.org/docs/authoring/admonitions/#collapsible-blocks)
-
-??? info "Click to expand for more info"
-
-    This content is hidden until you click to expand it.
-    Great for FAQs or long explanations.
-
-## Code Blocks
-
-> Go to [documentation](https://zensical.org/docs/authoring/code-blocks/)
-
-``` python hl_lines="2" title="Code blocks"
-def greet(name):
-    print(f"Hello, {name}!")  # (1)!
-
-
-greet("Python")
+```sh
+changenote init --name pkg-a --version 0.0.0
 ```
 
-1.  > Go to [documentation](https://zensical.org/docs/authoring/code-blocks/#code-annotations)
+This creates `.changenote/config.json` and `VERSION`.
 
-    Code annotations allow to attach notes to lines of code.
+To use an existing version source instead, run this command in place of the previous command:
 
-Code can also be highlighted inline: `#!python print("Hello, Python!")`.
-
-## Content tabs
-
-> Go to [documentation](https://zensical.org/docs/authoring/content-tabs/)
-
-=== "Python"
-
-    ``` python
-    print("Hello from Python!")
-    ```
-
-=== "Rust"
-
-    ``` rs
-    println!("Hello from Rust!");
-    ```
-
-## Diagrams
-
-> Go to [documentation](https://zensical.org/docs/authoring/diagrams/)
-
-``` mermaid
-graph LR
-  A[Start] --> B{Error?};
-  B -->|Yes| C[Hmm...];
-  C --> D[Debug];
-  D --> B;
-  B ---->|No| E[Yay!];
+```sh
+changenote init --name pkg-a --version-file Cargo.toml
 ```
 
-## Footnotes
+Use only one initialization command.
+See [Configuration](configuration.md) for other version formats and multiple packages.
+The remaining steps use the plain-text `VERSION` example.
 
-> Go to [documentation](https://zensical.org/docs/authoring/footnotes/)
+## 2. Add a change note
 
-Here's a sentence with a footnote.[^1]
+```sh
+changenote add hello-world --package pkg-a --bump minor --message "Initial release"
+```
 
-Hover it, to see a tooltip.
+This creates `.changenote/hello-world.md`:
 
-[^1]: This is the footnote.
+```markdown
+---
+pkg-a: minor
+---
 
+Initial release
+```
 
-## Formatting
+Commit the configuration, version file, and note with your change.
+Use notes for changes that need a release, according to your repository's policy.
+Documentation-only changes, test-only changes, and internal refactors without release impact normally need no note.
+Do not create empty notes as no-release markers.
+See [Change Notes](notes.md) for note format, bump selection, and changelog sections.
 
-> Go to [documentation](https://zensical.org/docs/authoring/formatting/)
+## 3. Review the release plan
 
-- ==This was marked (highlight)==
-- ^^This was inserted (underline)^^
-- ~~This was deleted (strikethrough)~~
-- H~2~O
-- A^T^A
-- ++ctrl+alt+del++
+```sh
+changenote status
+```
 
-## Icons, Emojis
+`status` prints JSON without changing files.
+The plan applies the highest requested bump once for each package.
+For this example, the minor note changes `pkg-a` from `0.0.0` to `0.1.0`.
+Multiple patch notes produce one patch bump, not multiple bumps.
 
-> Go to [documentation](https://zensical.org/docs/authoring/icons-emojis/)
+## 4. Apply the approved release
 
-* :sparkles: `:sparkles:`
-* :rocket: `:rocket:`
-* :tada: `:tada:`
-* :memo: `:memo:`
-* :eyes: `:eyes:`
+Read [Releases](releases.md) for release outputs, safety rules, and recovery before you continue.
+Start from a clean checkout after the release is approved:
 
-## Maths
+```sh
+changenote version
+git diff
+```
 
-> Go to [documentation](https://zensical.org/docs/authoring/math/)
+`version` updates version files and supported existing lockfiles, adds changelog entries, saves `.changenote/releases.json`, and removes consumed notes.
+Review the changes before you commit them.
 
-$$
-\cos x=\sum_{k=0}^{\infty}\frac{(-1)^k}{(2k)!}x^{2k}
-$$
+For the plain-text `VERSION` example, commit the release outputs, then create the local tag:
 
-!!! warning "Needs configuration"
-    Note that MathJax is included via a `script` tag on this page and is not
-    configured in the generated default configuration to avoid including it
-    in a pages that do not need it. See the documentation for details on how
-    to configure it on all your pages if they are more Maths-heavy than these
-    simple starter pages.
+```sh
+git add -- VERSION CHANGELOG.md .changenote/releases.json .changenote/hello-world.md
+git commit -m "chore(release): version packages"
+changenote tag
+```
 
-<script id="MathJax-script" src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
-<script>
-  window.MathJax = {
-    tex: {
-      inlineMath: [["\\(", "\\)"]],
-      displayMath: [["\\[", "\\]"]],
-      processEscapes: true,
-      processEnvironments: true
-    },
-    options: {
-      ignoreHtmlClass: ".*|",
-      processHtmlClass: "arithmatex"
-    }
-  };
+The tag is `v0.1.0`.
+`tag` requires a clean working tree.
+It does not push tags or publish artifacts.
 
-  document$.subscribe(() => {
-    MathJax.startup.output.clearCache()
-    MathJax.typesetClear()
-    MathJax.texReset()
-    MathJax.typesetPromise()
-  })
-</script>
+## Next steps
 
-## Task Lists
+1. [Configure packages](configuration.md), version sources, lockfiles, and version groups.
+2. [Write change notes](notes.md) for release changes.
+3. [Check PR notes](checks.md) before changes merge.
+4. Set up [GitHub Actions](https://github.com/changenote/action/blob/main/docs/github-actions.md) for release PRs and publication.
 
-> Go to [documentation](https://zensical.org/docs/authoring/lists/#using-task-lists)
-
-* [x] Install Zensical
-* [x] Configure `zensical.toml`
-* [x] Write amazing documentation
-* [ ] Deploy anywhere
-
-## Tooltips
-
-> Go to [documentation](https://zensical.org/docs/authoring/tooltips/)
-
-[Hover me][example]
-
-  [example]: https://example.com "I'm a tooltip!"
+For language-specific setup, see [Go Modules](go.md) or [Swift Packages and Apple Apps](swift.md).

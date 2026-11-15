@@ -11,15 +11,22 @@ site_name = "Documentation"
 # edit_uri = "edit/main/docs/"
 
 nav = [
-  { "Get started" = "index.md" },
-  { "Configuration" = "configuration.md" },
-  { "Change notes and changelogs" = "notes.md" },
-  { "Release behavior" = "releases.md" },
-  { "PR note checks" = "checks.md" },
-  { "Go modules" = "go.md" },
-  { "Swift packages and Apple apps" = "swift.md" },
+  { "Getting Started" = [
+    { "Installation" = "installation.md" },
+    { "Quickstart" = "index.md" },
+  ] },
+  { "Usage" = [
+    { "Configuration" = "configuration.md" },
+    { "Change Notes" = "notes.md" },
+    { "Releases" = "releases.md" },
+    { "PR Checks" = "checks.md" },
+    { "GitHub Actions" = "https://github.com/changenote/action/blob/main/docs/github-actions.md" },
+    { "Language Guides" = [
+      { "Go Modules" = "go.md" },
+      { "Swift Packages and Apple Apps" = "swift.md" },
+    ] },
+  ] },
   { "Development" = "development.md" },
-  { "Markdown in 5min" = "markdown.md" },
 ]
 
 # extra_css = ["stylesheets/extra.css"]
