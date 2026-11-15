@@ -133,6 +133,20 @@ pub(crate) fn discover_paths(root: &Path, paths: &[PathBuf]) -> Result<Vec<Lockf
                 }
             }
             if let Some((spec, path)) = found {
+                if spec.tool == "pnpm" {
+                    // pnpm can write an ancestor workspace lock instead of this file.
+                    // Check above the repository root because pnpm does the same.
+                    for ancestor in directory.ancestors() {
+                        if ancestor.join("pnpm-workspace.yaml").try_exists()? {
+                            ensure!(
+                                ancestor == directory,
+                                "nested pnpm lockfile is not supported inside a pnpm workspace: {}; use the workspace-root pnpm-lock.yaml",
+                                path.display()
+                            );
+                            break;
+                        }
+                    }
+                }
                 let relative = path.strip_prefix(&root)?;
                 paths::checked_path(&root, relative)?;
                 let owner = directory.join(manifest.file_name().unwrap());

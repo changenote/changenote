@@ -157,8 +157,12 @@ Set an explicit [tag prefix](#additional-version-files-and-tag-prefixes) to keep
 
 The CLI checks the manifest directory, then its ancestors up to the repository root, and uses the nearest matching lockfile.
 For `package.json`, the existing lockfile selects npm, pnpm, or Bun; `packageManager` does not override this selection.
-A nested lockfile takes priority over an ancestor lockfile, even when they use different tools.
+A nested lockfile takes priority over an ancestor lockfile, even when they use different tools, except for the pnpm workspace limit below.
 The owning manifest must exist beside the lockfile. Shared pnpm lockfiles also need the normal `pnpm-workspace.yaml` configuration.
+A selected `pnpm-lock.yaml` below a pnpm workspace root fails before writes. pnpm can change the workspace-root lockfile instead of the selected file.
+This limit also applies when `sharedWorkspaceLockfile` is false or the workspace root is outside the changenote root.
+Use the workspace-root lockfile with shared locking. Remove stale child lockfiles before using changenote.
+An independent nested pnpm workspace can use its own workspace-root lockfile.
 All release manifests are updated before any command runs; each shared lockfile is refreshed once.
 Lockfile symlinks and paths outside the repository are rejected.
 Plain-text version files do not trigger synchronization. No lockfile is created when no matching file exists.

@@ -367,6 +367,7 @@ fn pnpm_and_bun_share_one_refresh_after_all_version_outputs() {
 fn nearest_node_lock_wins_across_package_managers() {
     for (child_lock, tool, parent_lock) in [
         ("pnpm-lock.yaml", "pnpm", "package-lock.json"),
+        ("pnpm-lock.yaml", "pnpm", "pnpm-lock.yaml"),
         ("bun.lock", "bun", "pnpm-lock.yaml"),
         ("package-lock.json", "npm", "bun.lock"),
     ] {
@@ -378,6 +379,11 @@ fn nearest_node_lock_wins_across_package_managers() {
         )
         .unwrap();
         fs::write(dir.path().join("child").join(child_lock), "child lock").unwrap();
+        if tool == "pnpm" && parent_lock == "pnpm-lock.yaml" {
+            for path in ["pnpm-workspace.yaml", "child/pnpm-workspace.yaml"] {
+                fs::write(dir.path().join(path), "packages: []\n").unwrap();
+            }
+        }
         fs::write(
             dir.path().join(".changenote/config.json"),
             r#"{"packages":{"pkg":{"path":"child","version_file":"package.json"}}}"#,
@@ -403,6 +409,104 @@ fn nearest_node_lock_wins_across_package_managers() {
             "updated"
         );
         assert!(dir.path().join("child/calls").exists());
+    }
+}
+
+#[test]
+#[cfg(unix)]
+fn nested_pnpm_workspace_locks_fail_before_writes_or_tool_checks() {
+    for external_workspace in [false, true] {
+        for extra in [false, true] {
+            for shared in [true, false] {
+                let workspace = tempfile::tempdir().unwrap();
+                let root = if external_workspace {
+                    workspace.path().join("repo")
+                } else {
+                    workspace.path().to_path_buf()
+                };
+                fs::create_dir_all(root.join(".changenote")).unwrap();
+                fs::create_dir_all(root.join("child")).unwrap();
+                fs::write(
+                    workspace.path().join("package.json"),
+                    "{\"name\":\"workspace\",\"version\":\"1.2.3\"}",
+                )
+                .unwrap();
+                fs::write(
+                    workspace.path().join("pnpm-workspace.yaml"),
+                    format!("packages:\n  - '**/child'\nsharedWorkspaceLockfile: {shared}\n"),
+                )
+                .unwrap();
+                fs::write(workspace.path().join("pnpm-lock.yaml"), "workspace lock\n").unwrap();
+                fs::write(root.join("child/package.json"), "{\"version\":\"1.2.3\"}").unwrap();
+                fs::write(root.join("child/pnpm-lock.yaml"), "child lock\n").unwrap();
+                fs::write(root.join("child/VERSION"), "1.2.3\n").unwrap();
+                let package = if extra {
+                    serde_json::json!({"path":"child","version_file":"VERSION","version_outputs":["package.json"]})
+                } else {
+                    serde_json::json!({"path":"child","version_file":"package.json"})
+                };
+                fs::write(
+                    root.join(".changenote/config.json"),
+                    serde_json::json!({"packages":{"pkg":package}}).to_string(),
+                )
+                .unwrap();
+                fs::write(
+                    root.join(".changenote/change.md"),
+                    "---\npkg: patch\n---\nFix\n",
+                )
+                .unwrap();
+                fs::write(root.join("child/CHANGELOG.md"), "old changelog\n").unwrap();
+                fs::write(root.join(".changenote/releases.json"), "old batch\n").unwrap();
+                let tracked = [
+                    "child/package.json",
+                    "child/VERSION",
+                    "child/pnpm-lock.yaml",
+                    "child/CHANGELOG.md",
+                    ".changenote/config.json",
+                    ".changenote/change.md",
+                    ".changenote/releases.json",
+                ];
+                let before: Vec<_> = tracked
+                    .iter()
+                    .map(|path| fs::read(root.join(path)).unwrap())
+                    .collect();
+                let bin = fake_tool(
+                    &root,
+                    "pnpm",
+                    "printf called > calls\nprintf changed > pnpm-lock.yaml",
+                );
+                let output = cli(&root, Some(&bin), &["version"]);
+                assert!(!output.status.success());
+                assert!(
+                    String::from_utf8_lossy(&output.stderr)
+                        .contains("nested pnpm lockfile is not supported"),
+                    "{}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+                let output = cli(&root, Some(&bin), &["doctor"]);
+                assert!(!output.status.success());
+                let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+                let checks = report["checks"].as_array().unwrap();
+                assert!(checks.iter().any(|check| {
+                    check["name"] == "lockfiles"
+                        && check["status"] == "fail"
+                        && check["message"]
+                            .as_str()
+                            .unwrap()
+                            .contains("nested pnpm lockfile is not supported")
+                }));
+                assert!(!checks.iter().any(|check| check["name"] == "tool:pnpm"));
+                assert!(!root.join("child/calls").exists());
+                assert!(!workspace.path().join("calls").exists());
+                assert_eq!(
+                    fs::read_to_string(workspace.path().join("pnpm-lock.yaml")).unwrap(),
+                    "workspace lock\n"
+                );
+                for (path, bytes) in tracked.iter().zip(before) {
+                    assert_eq!(fs::read(root.join(path)).unwrap(), bytes, "{path}");
+                }
+            }
+        }
     }
 }
 
