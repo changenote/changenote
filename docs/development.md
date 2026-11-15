@@ -51,6 +51,12 @@ cargo run --locked -p changenote -- status
 
 The Rust package and executable names are `changenote`, so `cargo run --locked -p changenote -- status` works from the repository root. Rust build outputs go to root `target/`. The members have no separate lockfiles or inherited workspace versions. The private crates use version `0.0.0`; they do not have release plans. The public entry point supplies its package version and `changenote-skill`'s embedded Markdown to the CLI.
 
+The lockfile suite runs real pnpm and Bun checks when the tools are installed; missing tools are reported as skipped checks.
+For package-manager changes, install both tools and run `cargo test --locked -p changenote-core --test lockfiles` without skips.
+The tests cover offline standalone and workspace refreshes, frozen-lockfile validation, and script suppression with local dependencies.
+pnpm 12.21.0 and Bun 1.4.4 were verified. Bun must support `install --offline`.
+Fake-tool CLI tests always check command selection and recovery without these installations.
+
 To install from this checkout, run `cargo install --locked --path crates/changenote`.
 Registry installation remains `cargo install changenote --locked`.
 

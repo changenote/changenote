@@ -25,12 +25,19 @@ fn project(manifest: &str, content: &str, lock: &str) -> TempDir {
 
 #[test]
 fn plain_version_files_do_not_refresh_adjacent_locks() {
-    let dir = project("VERSION", "1.2.3\n", "Cargo.lock");
-    changenote::version(dir.path()).unwrap();
-    assert_eq!(
-        fs::read_to_string(dir.path().join("Cargo.lock")).unwrap(),
-        "original lock\n"
-    );
+    for lock in [
+        "Cargo.lock",
+        "package-lock.json",
+        "pnpm-lock.yaml",
+        "bun.lock",
+    ] {
+        let dir = project("VERSION", "1.2.3\n", lock);
+        changenote::version(dir.path()).unwrap();
+        assert_eq!(
+            fs::read_to_string(dir.path().join(lock)).unwrap(),
+            "original lock\n"
+        );
+    }
 }
 
 #[test]
@@ -168,4 +175,184 @@ fn real_cargo_refresh_preserves_dependency_resolution() {
             .unwrap()
             .success()
     );
+}
+
+#[test]
+fn conflicting_node_locks_and_binary_bun_fail_before_writes() {
+    for locks in [
+        vec!["package-lock.json", "pnpm-lock.yaml"],
+        vec!["package-lock.json", "bun.lock"],
+        vec!["pnpm-lock.yaml", "bun.lock"],
+        vec!["pnpm-lock.yaml", "yarn.lock"],
+        vec!["bun.lock", "npm-shrinkwrap.json"],
+        vec!["bun.lock", "bun.lockb"],
+        vec!["bun.lockb"],
+    ] {
+        let dir = project("package.json", "{\"version\":\"1.2.3\"}", locks[0]);
+        for lock in &locks[1..] {
+            fs::write(dir.path().join(lock), "original lock\n").unwrap();
+        }
+        let error = changenote::version(dir.path()).unwrap_err().to_string();
+        assert!(
+            error.contains("multiple Node.js lockfiles") || error.contains("is not supported"),
+            "{error}"
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join("package.json")).unwrap(),
+            "{\"version\":\"1.2.3\"}"
+        );
+        for lock in locks {
+            assert_eq!(
+                fs::read_to_string(dir.path().join(lock)).unwrap(),
+                "original lock\n"
+            );
+        }
+        assert!(dir.path().join(".changenote/change.md").exists());
+        assert!(!dir.path().join(".changenote/releases.json").exists());
+    }
+}
+
+#[test]
+#[cfg(unix)]
+fn pnpm_and_bun_reject_unsafe_locks_before_writes() {
+    for lock in ["pnpm-lock.yaml", "bun.lock"] {
+        for kind in ["symlink", "dangling", "directory"] {
+            let dir = project("package.json", "{\"version\":\"1.2.3\"}", lock);
+            fs::remove_file(dir.path().join(lock)).unwrap();
+            let outside = tempfile::tempdir().unwrap();
+            let target = outside.path().join("lock");
+            if kind != "dangling" {
+                fs::write(&target, "outside bytes").unwrap();
+            }
+            if kind == "directory" {
+                fs::create_dir(dir.path().join(lock)).unwrap();
+            } else {
+                std::os::unix::fs::symlink(&target, dir.path().join(lock)).unwrap();
+            }
+            assert!(
+                changenote::version(dir.path())
+                    .unwrap_err()
+                    .to_string()
+                    .contains("regular file")
+            );
+            assert_eq!(
+                fs::read_to_string(dir.path().join("package.json")).unwrap(),
+                "{\"version\":\"1.2.3\"}"
+            );
+            assert!(dir.path().join(".changenote/change.md").exists());
+            if kind != "dangling" {
+                assert_eq!(fs::read_to_string(target).unwrap(), "outside bytes");
+            }
+        }
+    }
+}
+
+fn node_command(tool: &str, root: &std::path::Path, frozen: bool) {
+    let mut command = Command::new(tool);
+    command.current_dir(root).env("CI", "true").args([
+        "install",
+        "--lockfile-only",
+        "--ignore-scripts",
+        "--offline",
+    ]);
+    if tool == "pnpm" {
+        command.arg("--ignore-pnpmfile");
+        if !frozen {
+            command.arg("--no-frozen-lockfile");
+        }
+    }
+    if frozen {
+        command.arg("--frozen-lockfile");
+    }
+    let output = command.output().unwrap();
+    assert!(
+        output.status.success(),
+        "{tool}: {}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn real_pnpm_and_bun_refresh_standalone_and_workspace_locks() {
+    for (tool, lock) in [("pnpm", "pnpm-lock.yaml"), ("bun", "bun.lock")] {
+        if Command::new(tool).arg("--version").output().is_err() {
+            eprintln!("Skipping real {tool} test: tool not installed");
+            continue;
+        }
+        for workspace in [false, true] {
+            let dir = project(
+                "package.json",
+                r#"{"name":"pkg","version":"1.2.3","private":true,"dependencies":{"local-dep":"file:vendor/local-dep"},"scripts":{"preinstall":"touch lifecycle-ran"}}"#,
+                lock,
+            );
+            fs::remove_file(dir.path().join(lock)).unwrap();
+            fs::create_dir_all(dir.path().join("vendor/local-dep")).unwrap();
+            fs::write(dir.path().join("vendor/local-dep/package.json"), r#"{"name":"local-dep","version":"0.1.0","scripts":{"preinstall":"touch lifecycle-ran"}}"#).unwrap();
+            if tool == "pnpm" {
+                fs::write(
+                    dir.path().join(".pnpmfile.cjs"),
+                    "throw new Error('hook executed');\n",
+                )
+                .unwrap();
+            }
+            if workspace {
+                let mut manifest: Value = serde_json::from_str(
+                    &fs::read_to_string(dir.path().join("package.json")).unwrap(),
+                )
+                .unwrap();
+                manifest["workspaces"] = serde_json::json!(["packages/*"]);
+                fs::write(dir.path().join("package.json"), manifest.to_string()).unwrap();
+                if tool == "pnpm" {
+                    fs::write(
+                        dir.path().join("pnpm-workspace.yaml"),
+                        "packages:\n  - packages/*\n",
+                    )
+                    .unwrap();
+                }
+                for name in ["a", "b"] {
+                    let path = dir.path().join("packages").join(name);
+                    fs::create_dir_all(&path).unwrap();
+                    fs::write(path.join("package.json"), serde_json::json!({"name":name,"version":"1.2.3","scripts":{"preinstall":"touch lifecycle-ran"}}).to_string()).unwrap();
+                }
+                fs::write(dir.path().join(".changenote/config.json"), r#"{"packages":{"a":{"path":"packages/a","version_file":"package.json"},"b":{"path":"packages/b","version_file":"package.json"}},"fixed":[["a","b"]]}"#).unwrap();
+                fs::write(
+                    dir.path().join(".changenote/change.md"),
+                    "---\na: patch\n---\nFix\n",
+                )
+                .unwrap();
+            }
+            node_command(tool, dir.path(), false);
+            let before = fs::read(dir.path().join(lock)).unwrap();
+            changenote::version(dir.path()).unwrap();
+            let updated = fs::read_to_string(dir.path().join(lock)).unwrap();
+            assert!(updated.contains("local-dep"));
+            if tool == "bun" && workspace {
+                assert_eq!(updated.matches("\"version\": \"1.2.4\"").count(), 2);
+            } else {
+                // Neither pnpm nor Bun records the root package version.
+                assert_eq!(updated.as_bytes(), before);
+            }
+            let paths = if workspace {
+                vec!["packages/a", "packages/b"]
+            } else {
+                vec!["."]
+            };
+            for path in paths {
+                let manifest: Value = serde_json::from_str(
+                    &fs::read_to_string(dir.path().join(path).join("package.json")).unwrap(),
+                )
+                .unwrap();
+                assert_eq!(manifest["version"], "1.2.4");
+                assert!(!dir.path().join(path).join("lifecycle-ran").exists());
+            }
+            assert!(!dir.path().join("lifecycle-ran").exists());
+            assert!(!dir.path().join("vendor/local-dep/lifecycle-ran").exists());
+            assert!(!dir.path().join("node_modules").exists());
+            let refreshed = fs::read(dir.path().join(lock)).unwrap();
+            node_command(tool, dir.path(), true);
+            assert_eq!(fs::read(dir.path().join(lock)).unwrap(), refreshed);
+            assert!(!dir.path().join(".changenote/change.md").exists());
+        }
+    }
 }

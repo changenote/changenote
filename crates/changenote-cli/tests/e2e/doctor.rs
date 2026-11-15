@@ -224,3 +224,43 @@ fn tools_must_be_executable_but_are_never_run() {
             .any(|check| check["name"] == "cache" && check["status"] == "unknown")
     );
 }
+
+#[test]
+#[cfg(unix)]
+fn pnpm_and_bun_tools_are_required_only_for_pending_releases_and_never_run() {
+    use std::fs::Permissions;
+    use std::os::unix::fs::PermissionsExt;
+    for (name, lock) in [("pnpm", "pnpm-lock.yaml"), ("bun", "bun.lock")] {
+        for extra in [false, true] {
+            let dir = manifest_project(extra);
+            fs::remove_file(dir.path().join("package-lock.json")).unwrap();
+            write(dir.path(), lock, "original lock\n");
+            let bin = tempfile::tempdir().unwrap();
+            assert!(cli(dir.path(), bin.path()).0);
+            changenote::add(dir.path(), "fix", vec!["pkg".into()], Bump::Patch, "Fix").unwrap();
+            let (passed, report) = cli(dir.path(), bin.path());
+            assert!(!passed);
+            let check_name = format!("tool:{name}");
+            assert!(
+                report["checks"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|check| check["name"] == check_name && check["status"] == "fail")
+            );
+            let tool = bin.path().join(name);
+            fs::write(&tool, "#!/bin/sh\nprintf executed > executed\nexit 1\n").unwrap();
+            fs::set_permissions(&tool, Permissions::from_mode(0o755)).unwrap();
+            let (passed, report) = cli(dir.path(), bin.path());
+            assert!(passed, "{report}");
+            assert!(
+                report["checks"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|check| check["name"] == check_name && check["status"] == "pass")
+            );
+            assert!(!dir.path().join("executed").exists());
+        }
+    }
+}
