@@ -44,7 +44,7 @@ Create `.changenote/config.json` with explicit packages:
 }
 ```
 
-The optional `$schema` field enables editor validation and completion with the repository's [JSON Schema](../schema.json). `init` adds the GitHub raw URL shown above. Replace `main` with a commit SHA to pin the schema, or use a local schema path. The CLI accepts the field as metadata; it does not fetch the schema or use it for validation. Configurations without `$schema` remain supported. Unknown configuration fields are rejected. The CLI also checks paths, files, and versions that the schema cannot verify.
+The optional `$schema` field enables editor validation and completion with the repository's [JSON Schema](https://raw.githubusercontent.com/changenote/changenote/main/schema.json). `init` adds the GitHub raw URL shown above. Replace `main` with a commit SHA to pin the schema, or use a local schema path. The CLI accepts the field as metadata; it does not fetch the schema or use it for validation. Configurations without `$schema` remain supported. Unknown configuration fields are rejected. The CLI also checks paths, files, and versions that the schema cannot verify.
 
 Rust `load_config()` validates the entire file but returns only the primary-package settings and schema metadata.
 Serializing this view drops extended settings; do not use it to round-trip an extended configuration.
