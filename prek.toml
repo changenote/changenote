@@ -1,0 +1,37 @@
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "v6.0.0"
+
+[[repos.hooks]]
+id = "check-yaml"
+
+[[repos.hooks]]
+id = "end-of-file-fixer"
+# Exact changelog fixtures require a final blank-line separator.
+exclude = '^crates/changenote-cli/tests/e2e/fixtures/planning/[^/]+/expected-[^/]+-CHANGELOG\.md$'
+
+[[repos.hooks]]
+id = "mixed-line-ending"
+args = ["--fix=lf"]
+
+[[repos.hooks]]
+id = "trailing-whitespace"
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "rustfmt"
+name = "Rust format"
+entry = "cargo fmt --check"
+language = "system"
+pass_filenames = false
+types = ["rust"]
+
+[[repos.hooks]]
+id = "clippy"
+name = "Rust lint"
+entry = "cargo clippy --locked --all-targets -- -D warnings"
+language = "system"
+pass_filenames = false
+types = ["rust"]
