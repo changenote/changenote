@@ -358,10 +358,16 @@ fn replay_from_the_same_parent_regenerates_the_exact_release_tree() {
 fn real_java_properties_matches_supported_syntax_and_exposes_ambiguous_values() {
     use std::process::Command;
 
+    // Source-file mode needs Java 11+ and the jdk.compiler module.
     if !Command::new("java")
-        .arg("--version")
+        .args(["--source", "11", "--list-modules"])
         .output()
-        .is_ok_and(|output| output.status.success())
+        .is_ok_and(|output| {
+            output.status.success()
+                && String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .any(|module| module.starts_with("jdk.compiler@"))
+        })
     {
         eprintln!(
             "Skipping real Java properties test: a JDK with source-file mode is not installed"

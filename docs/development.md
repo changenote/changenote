@@ -110,8 +110,9 @@ with no Lean or Lake executable in `PATH`.
 
 The real Java properties test compares Android version sources with Java's
 `Properties` reader before and after a temporary release. It also checks that
-ambiguous values are rejected. With a JDK that supports source-file mode in
-`PATH`, run:
+ambiguous values are rejected. It skips when Java is missing, the launcher
+cannot accept Java 11 source-file mode, or the `jdk.compiler` module is absent.
+With a JDK that supports source-file mode in `PATH`, run:
 
 ```sh
 cargo test --locked -p changenote-core --test gradle_properties real_java -- --show-output
