@@ -157,44 +157,54 @@ fn real_poetry_version_change_keeps_existing_lock_fresh() {
         "[project]\nname = 'pkg'\nversion = \"1.2.3\"\nrequires-python = '>=3.12'\n\n[tool.poetry]\nversion = '0.9.0'\n",
     ] {
         let dir = project("pyproject.toml", content, "poetry.lock");
-        fs::remove_file(dir.path().join("poetry.lock")).unwrap();
+        fs::remove_file(dir.path().join("poetry.lock"))
+            .expect("remove lockfile sentinel before running Poetry");
         for args in [
             vec!["--no-plugins", "--no-interaction", "lock"],
             vec!["--no-plugins", "--no-interaction", "check", "--lock"],
         ] {
             let output = Command::new("poetry")
-                .args(args)
+                .args(&args)
                 .env("POETRY_VIRTUALENVS_CREATE", "false")
                 .current_dir(dir.path())
                 .output()
-                .unwrap();
+                .expect("run Poetry to prepare or validate its lockfile");
             assert!(
                 output.status.success(),
-                "{}{}",
+                "poetry {args:?} failed: {}{}",
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             );
         }
-        let before = fs::read(dir.path().join("poetry.lock")).unwrap();
-        changenote::version(dir.path()).unwrap();
+        let before =
+            fs::read(dir.path().join("poetry.lock")).expect("read original Poetry lockfile");
+        changenote::version(dir.path()).expect("apply version-only Poetry release");
         assert_eq!(
-            fs::read_to_string(dir.path().join("pyproject.toml")).unwrap(),
+            fs::read_to_string(dir.path().join("pyproject.toml"))
+                .expect("read updated Poetry manifest"),
             content.replace("1.2.3", "1.2.4")
         );
-        assert_eq!(fs::read(dir.path().join("poetry.lock")).unwrap(), before);
+        assert_eq!(
+            fs::read(dir.path().join("poetry.lock")).expect("read Poetry lockfile after release"),
+            before
+        );
         let output = Command::new("poetry")
             .args(["--no-plugins", "--no-interaction", "check", "--lock"])
             .env("POETRY_VIRTUALENVS_CREATE", "false")
             .current_dir(dir.path())
             .output()
-            .unwrap();
+            .expect("validate Poetry lockfile after release");
         assert!(
             output.status.success(),
-            "{}{}",
+            "Poetry lock validation failed after the version change: {}{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
-        assert_eq!(fs::read(dir.path().join("poetry.lock")).unwrap(), before);
+        assert_eq!(
+            fs::read(dir.path().join("poetry.lock"))
+                .expect("read Poetry lockfile after validation"),
+            before
+        );
     }
 }
 

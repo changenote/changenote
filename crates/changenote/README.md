@@ -37,7 +37,8 @@ Source links require `changelog.source_repository` with a canonical HTTPS GitHub
 Without this setting, planning and versioning need no Git history for source attribution.
 Plain-text and Xcode configuration version files need no language runtime or package manager.
 Manifest releases support Cargo, uv, npm, pnpm, and Bun text lockfiles and need the corresponding [package manager and offline cache](https://github.com/changenote/changenote/blob/main/docs/configuration.md#automatic-lockfile-synchronization).
-Python version sources support explicit `project.version` and Poetry's `tool.poetry.version` in `pyproject.toml`.
+Python version sources support explicit `project.version` and Poetry's
+`tool.poetry.version` in `pyproject.toml`.
 Version-only Poetry releases leave `poetry.lock` unchanged and do not run Poetry.
 
 For Python wheels and `uvx` usage, see the [Python distribution guide](https://github.com/changenote/changenote/blob/main/python/README.md).

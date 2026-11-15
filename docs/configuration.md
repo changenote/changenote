@@ -74,13 +74,26 @@ For root and nested Go modules, see the [Go release guide](go.md), including v2+
 
 | Filename | Version field |
 | --- | --- |
-| `pyproject.toml` | `project.version`, or `tool.poetry.version` when `project.version` is absent |
+| `pyproject.toml` | `project.version` or `tool.poetry.version` |
 | `Cargo.toml` | `package.version` |
 | `package.json` | Top-level `version` |
 | `*.xcconfig` | One literal `MARKETING_VERSION` assignment |
 | Other filenames, including `VERSION` | Plain-text stable SemVer string |
 
-Manifest versions must be explicit strings. Python manifests use `project.version` when present, otherwise `tool.poetry.version`. Only the selected field is updated; an unused Poetry version stays unchanged. An invalid `project.version` is rejected, not replaced by the Poetry value. Dynamic Python versions, including `project.dynamic = ["version"]` with a Poetry version, and inherited Cargo workspace versions are not supported. TOML comments and unrelated fields are preserved. JSON updates replace only the top-level version value token. Every other byte is preserved, including indentation, line endings, field order, number spelling, and the presence or absence of a final newline. Duplicate top-level version keys, including escaped spellings of the same key, are rejected. Dependency requirements are not updated. Use `init --version-file` to adopt an existing source without changing it.
+Manifest versions must be explicit strings. Python manifests use
+`project.version` when present, otherwise `tool.poetry.version`. Only the selected
+field is updated. An unused Poetry version stays unchanged. An invalid
+`project.version` is rejected, not replaced by the Poetry value. Dynamic Python
+versions are not supported, even with an explicit Poetry version. This includes
+`project.dynamic` arrays that contain `"version"`. Inherited Cargo workspace
+versions are not supported.
+
+TOML comments and unrelated fields are preserved. JSON updates replace only the
+top-level version value token. Every other byte is preserved, including
+indentation, line endings, field order, number spelling, and the presence or
+absence of a final newline. Duplicate top-level version keys, including escaped
+spellings of the same key, are rejected. Dependency requirements are not updated.
+Use `init --version-file` to adopt an existing source without changing it.
 
 Xcode configuration version files require one unconditional `MARKETING_VERSION = 1.2.3` assignment with an unquoted stable SemVer value.
 Only the version token changes; comments, spacing, line endings, other settings, and build numbers remain unchanged.
@@ -169,8 +182,10 @@ Plain-text version files do not trigger synchronization. No lockfile is created 
 
 Poetry's own package version is not part of its lockfile content hash.
 changenote leaves `poetry.lock` unchanged and does not run Poetry.
-If another Poetry package locks the changed package as a path dependency, update that lockfile with Poetry separately.
-An existing `uv.lock` still triggers uv synchronization, including for a Poetry version source.
+If another Poetry package locks the changed package as a path dependency, update
+that lockfile with Poetry separately.
+An existing `uv.lock` still triggers uv synchronization, including for a Poetry
+version source.
 
 Keep only one Node.js lockfile in each owning directory.
 Multiple supported lockfiles, or a supported lockfile beside `yarn.lock`, `npm-shrinkwrap.json`, or `bun.lockb`, fail before writes.

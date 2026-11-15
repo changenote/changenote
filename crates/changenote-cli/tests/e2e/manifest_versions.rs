@@ -47,12 +47,13 @@ fn git(root: &Path, args: &[&str]) {
 
 #[test]
 fn init_adopts_poetry_and_releases_without_a_package_manager() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = tempfile::tempdir().expect("create Poetry test directory");
     let before = "# Package\n[tool.poetry]\nname = 'pkg'\nversion = \"1.2.3\" # release\n";
-    fs::write(dir.path().join("pyproject.toml"), before).unwrap();
-    fs::write(dir.path().join("poetry.lock"), "unchanged lock\n").unwrap();
+    fs::write(dir.path().join("pyproject.toml"), before).expect("write Poetry manifest");
+    fs::write(dir.path().join("poetry.lock"), "unchanged lock\n")
+        .expect("write Poetry lockfile sentinel");
     let empty_path = dir.path().join("bin");
-    fs::create_dir(&empty_path).unwrap();
+    fs::create_dir(&empty_path).expect("create empty PATH directory");
     for args in [
         vec!["init", "--name", "pkg", "--version-file", "pyproject.toml"],
         vec![
@@ -71,20 +72,21 @@ fn init_adopts_poetry_and_releases_without_a_package_manager() {
         let output = Command::new(env!("CARGO_BIN_EXE_changenote"))
             .current_dir(dir.path())
             .env("PATH", &empty_path)
-            .args(args)
+            .args(&args)
             .output()
-            .unwrap();
+            .expect("run changenote without a package manager");
         assert!(
             output.status.success(),
-            "{}",
+            "changenote {args:?} failed: {}",
             String::from_utf8_lossy(&output.stderr)
         );
         assert_eq!(
-            fs::read_to_string(dir.path().join("pyproject.toml")).unwrap(),
+            fs::read_to_string(dir.path().join("pyproject.toml")).expect("read Poetry manifest"),
             before
         );
         assert_eq!(
-            fs::read_to_string(dir.path().join("poetry.lock")).unwrap(),
+            fs::read_to_string(dir.path().join("poetry.lock"))
+                .expect("read Poetry lockfile sentinel"),
             "unchanged lock\n"
         );
     }
@@ -93,18 +95,19 @@ fn init_adopts_poetry_and_releases_without_a_package_manager() {
         .env("PATH", &empty_path)
         .arg("version")
         .output()
-        .unwrap();
+        .expect("run changenote version without a package manager");
     assert!(
         output.status.success(),
-        "{}",
+        "changenote version failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     assert_eq!(
-        fs::read_to_string(dir.path().join("pyproject.toml")).unwrap(),
+        fs::read_to_string(dir.path().join("pyproject.toml"))
+            .expect("read updated Poetry manifest"),
         before.replace("1.2.3", "1.3.0")
     );
     assert_eq!(
-        fs::read_to_string(dir.path().join("poetry.lock")).unwrap(),
+        fs::read_to_string(dir.path().join("poetry.lock")).expect("read Poetry lockfile sentinel"),
         "unchanged lock\n"
     );
     assert!(!dir.path().join("VERSION").exists());

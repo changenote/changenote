@@ -4,7 +4,7 @@ use semver::Version;
 use std::fs;
 use std::ops::Range;
 use std::path::Path;
-use toml_edit::DocumentMut;
+use toml_edit::{DocumentMut, Value};
 
 // Manifest filenames and the xcconfig extension select fields. Other files remain plain text.
 enum VersionFile {
@@ -14,7 +14,10 @@ enum VersionFile {
         content: String,
         span: Range<usize>,
     },
-    Toml(DocumentMut, &'static [&'static str]),
+    Toml {
+        document: DocumentMut,
+        version_path: &'static [&'static str],
+    },
     Xcconfig {
         content: String,
         span: Range<usize>,
@@ -60,7 +63,10 @@ impl VersionFile {
                         &["project", "version"]
                     }
                 };
-                Self::Toml(document, version_path)
+                Self::Toml {
+                    document,
+                    version_path,
+                }
             }
             _ if path.extension().is_some_and(|ext| ext == "xcconfig") => Self::Xcconfig {
                 span: xcconfig_version_span(&content)?,
@@ -77,7 +83,10 @@ impl VersionFile {
                     .and_then(JsonValue::as_string)
                     .context("package.json requires a string version field")?
             }
-            Self::Toml(document, version_path) => version_path
+            Self::Toml {
+                document,
+                version_path,
+            } => version_path
                 .iter()
                 .try_fold(document.as_item(), |item, key| item.get(key))
                 .and_then(|item| item.as_str())
@@ -182,14 +191,17 @@ pub(crate) fn version_content(path: &Path, version: &Version, legacy: bool) -> R
                 Ok(content)
             }
         }
-        VersionFile::Toml(mut document, version_path) => {
+        VersionFile::Toml {
+            mut document,
+            version_path,
+        } => {
             let value = version_path
                 .iter()
                 .try_fold(document.as_item_mut(), |item, key| item.get_mut(key))
                 .and_then(|item| item.as_value_mut())
                 .context("missing version")?;
             let decor = value.decor().clone();
-            *value = toml_edit::Value::from(version.to_string());
+            *value = Value::from(version.to_string());
             *value.decor_mut() = decor;
             Ok(document.to_string())
         }
