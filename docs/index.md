@@ -3,36 +3,8 @@
 Use changenote to turn Markdown change notes into versions, changelogs, and local release tags.
 This guide uses one package with a plain-text `VERSION` file.
 
-## Start with an AI agent
-
-The `changenote` skill helps your agent configure packages, write change notes, review release plans, and set up GitHub Actions.
-
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then print the bundled skill without a separate CLI installation:
-
-```sh
-uvx changenote skill
-```
-
-The command prints the complete `SKILL.md`, including its YAML frontmatter.
-It needs no project configuration and does not change files.
-The skill is bundled with the CLI version used to run the command; it is not downloaded from GitHub.
-
-Ask your agent to read the output and use it for your task, for example:
-
-```text
-Run `uvx changenote skill` and read its output.
-Follow its instructions to review my changes.
-Add or update a note if a release is needed.
-Show the release plan.
-Do not apply versions, create tags, or publish.
-```
-
-For repeated use, save the output as `SKILL.md` in a skill directory supported by your agent.
-The command only prints the skill; it does not install it for your agent.
-Update saved copies after a CLI upgrade.
-See the [skill source](https://github.com/changenote/changenote/blob/main/crates/changenote-skill/SKILL.md) for its full workflow and safety rules.
-
-To use the CLI directly, follow the steps below.
+For an agent-led workflow, see [Use with AI agents](agents.md).
+For an existing project, start with [Package configuration](configuration.md).
 
 ## 1. Install changenote
 
@@ -126,12 +98,21 @@ The tag is `v0.1.0`.
 `tag` requires a clean working tree.
 It does not push tags or publish artifacts.
 
+## Start with an AI agent
+
+The bundled `changenote` skill supports the same workflow.
+See [Use with AI agents](agents.md) to print it, give an agent a bounded task, and keep a saved copy current.
+
 ## Next steps
 
-1. [Configure packages](configuration.md), version sources, lockfiles, and version groups.
-2. [Write change notes](notes.md) for release changes.
-3. [Check PR notes](checks.md) before changes merge.
-4. Set up [GitHub Actions](https://github.com/changenote/action/blob/main/docs/github-actions.md) for release PRs and publication.
-   - The Action and its guide are maintained in the separate `changenote/action` repository.
+| Your task | Start here |
+| --- | --- |
+| Configure an existing project or monorepo | [Package configuration](configuration.md) |
+| Record changes for a release | [Change notes](notes.md) |
+| Review outputs or recover from a failed write | [Release behavior](releases.md) |
+| Require notes in contributor PRs | [PR note checks](checks.md) |
+| Find command options or shell completion | [CLI commands](commands.md) |
+| Automate release PRs and publication | [GitHub Actions](https://github.com/changenote/action/blob/main/docs/github-actions.md) |
 
-For language-specific setup, see [Go Modules](go.md) or [Swift Packages and Apple Apps](swift.md).
+For platform setup, see [Android](android.md), [Go](go.md), [Lean 4](lean.md), or [Swift and Apple apps](swift.md).
+The Action and its guides are maintained in the separate `changenote/action` repository.

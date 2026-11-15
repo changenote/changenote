@@ -32,11 +32,11 @@ Written in Rust. Inspired by [Changesets](https://github.com/changesets/changese
    changenote --help
    ```
 
-Git is required for `check`, `tag`, and opt-in [commit source links](https://github.com/changenote/changenote/blob/main/docs/notes.md#automatic-commit-source-links).
+Git is required for `check`, `tag`, and opt-in [commit source links](https://github.com/changenote/changenote/blob/main/docs/changelogs.md#automatic-commit-source-links).
 Source links require `changelog.source_repository` with a canonical HTTPS GitHub repository URL and complete local note history.
 Without this setting, planning and versioning need no Git history for source attribution.
 Plain-text and Xcode configuration version files need no language runtime or package manager.
-Manifest releases support Cargo, uv, npm, pnpm, and Bun text lockfiles and need the corresponding [package manager and offline cache](https://github.com/changenote/changenote/blob/main/docs/configuration.md#automatic-lockfile-synchronization).
+Manifest releases support Cargo, uv, npm, pnpm, and Bun text lockfiles and need the corresponding [package manager and offline cache](https://github.com/changenote/changenote/blob/main/docs/lockfiles.md).
 Python version sources support explicit `project.version` and Poetry's
 `tool.poetry.version` in `pyproject.toml`.
 Version-only Poetry releases leave `poetry.lock` unchanged and do not run
@@ -220,19 +220,14 @@ The old skill paths are no longer provided.
 
 ## Documentation
 
-| Guide | Contents |
-| --- | --- |
-| [Configuration](https://github.com/changenote/changenote/blob/main/docs/configuration.md) | Monorepos, version formats, additional outputs, tags, lockfiles, and version groups. |
-| [Change notes and changelogs](https://github.com/changenote/changenote/blob/main/docs/notes.md) | Release policy, multiple packages, automatic names, note types, sections, and templates. |
-| [Release behavior](https://github.com/changenote/changenote/blob/main/docs/releases.md) | Version calculation, saved batches, changelog entries, diagnostics, safety, and recovery. |
-| [PR note checks](https://github.com/changenote/changenote/blob/main/docs/checks.md) | CLI coverage rules, exemptions, file patterns, and a link to the check Action. |
-| [GitHub Actions](https://github.com/changenote/action/blob/main/docs/github-actions.md) | Release workflows, project scripts, tool setup, and external CI. |
-| [Android apps](https://github.com/changenote/changenote/blob/main/docs/android.md) | Native Gradle version properties, build codes, syntax limits, and overrides. |
-| [Go modules](https://github.com/changenote/changenote/blob/main/docs/go.md) | Root and nested modules, v2+ paths, and tag prefixes. |
-| [Lean 4 packages](https://github.com/changenote/changenote/blob/main/docs/lean.md) | Lake package versions, toolchain pins, and release tags. |
-| [Swift packages and Apple apps](https://github.com/changenote/changenote/blob/main/docs/swift.md) | Xcode version files, build numbers, and Swift Package Manager tags. |
-| [Python distribution](https://github.com/changenote/changenote/blob/main/python/README.md) | Wheels, `uvx`, wrapper development, and PyPI publication. |
-| [Development](https://github.com/changenote/changenote/blob/main/docs/development.md) | Repository layout, local checks, and this repository's release workflow. |
+Browse the [documentation site](https://changenote.github.io/changenote/) by task:
+
+- **Getting started:** [Quickstart](https://github.com/changenote/changenote/blob/main/docs/index.md), [Installation](https://github.com/changenote/changenote/blob/main/docs/installation.md), and [Use with AI agents](https://github.com/changenote/changenote/blob/main/docs/agents.md).
+- **Guides:** [Change notes](https://github.com/changenote/changenote/blob/main/docs/notes.md), [Release behavior](https://github.com/changenote/changenote/blob/main/docs/releases.md), [PR note checks](https://github.com/changenote/changenote/blob/main/docs/checks.md), and [GitHub Actions](https://github.com/changenote/action/blob/main/docs/github-actions.md).
+- **Configuration:** [Packages](https://github.com/changenote/changenote/blob/main/docs/configuration.md), [Version sources](https://github.com/changenote/changenote/blob/main/docs/version-files.md), [Version groups](https://github.com/changenote/changenote/blob/main/docs/version-groups.md), [Lockfiles](https://github.com/changenote/changenote/blob/main/docs/lockfiles.md), and [Changelogs](https://github.com/changenote/changenote/blob/main/docs/changelogs.md).
+- **Integrations:** [Android](https://github.com/changenote/changenote/blob/main/docs/android.md), [Go](https://github.com/changenote/changenote/blob/main/docs/go.md), [Lean 4](https://github.com/changenote/changenote/blob/main/docs/lean.md), and [Swift or Apple apps](https://github.com/changenote/changenote/blob/main/docs/swift.md).
+- **Reference:** [CLI commands](https://github.com/changenote/changenote/blob/main/docs/commands.md) and [Python distribution](https://github.com/changenote/changenote/blob/main/python/README.md).
+- **Maintainers:** [Development](https://github.com/changenote/changenote/blob/main/docs/development.md) and [Maintainer releases](https://github.com/changenote/changenote/blob/main/docs/maintainer-releases.md).
 
 changenote does not update internal dependency requirements, propagate dependency changes, or support prereleases.
 Primary and additional version files must contain explicit stable SemVer versions.
