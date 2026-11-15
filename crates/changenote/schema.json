@@ -114,7 +114,7 @@
           "minLength": 1
         },
         "version_file": {
-          "description": "Version file relative to the package directory. Use VERSION, pyproject.toml, Cargo.toml, package.json, or an .xcconfig file with one literal MARKETING_VERSION assignment. Parent components are not allowed.",
+          "description": "Version file relative to the package directory. Use VERSION, pyproject.toml, Cargo.toml, package.json, lakefile.toml (top-level version), or an .xcconfig file with one literal MARKETING_VERSION assignment. Parent components are not allowed.",
           "type": "string",
           "minLength": 1
         },

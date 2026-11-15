@@ -89,6 +89,11 @@ fn rejects_duplicate_version_and_non_json_without_writes() {
 fn reads_and_updates_manifest_versions() {
     for (filename, before, after) in [
         (
+            "lakefile.toml",
+            "# Lake\nname = 'pkg'\nversion = \"1.2.3\" # release\n\n[[require]]\nname = 'other'\nversion = '1.2.3'\n",
+            "# Lake\nname = 'pkg'\nversion = \"1.3.0\" # release\n\n[[require]]\nname = 'other'\nversion = '1.2.3'\n",
+        ),
+        (
             "Cargo.toml",
             "# Package\n[package]\nname = 'pkg'\nversion = \"1.2.3\" # release\n\n[dependencies]\nother = '1.2.3'\n",
             "# Package\n[package]\nname = 'pkg'\nversion = \"1.3.0\" # release\n\n[dependencies]\nother = '1.2.3'\n",
@@ -220,6 +225,21 @@ fn rejects_deeply_nested_json_without_writes() {
 #[test]
 fn rejects_invalid_or_indirect_manifest_versions_without_writes() {
     for (filename, content) in [
+        ("lakefile.toml", "name = 'pkg'\n"),
+        ("lakefile.toml", "[package]\nversion = '1.2.3'\n"),
+        ("lakefile.toml", "[[require]]\nversion = '1.2.3'\n"),
+        ("lakefile.toml", "version = 123\n"),
+        (
+            "lakefile.toml",
+            "version = { major = 1, minor = 2, patch = 3 }\n",
+        ),
+        ("lakefile.toml", "version = '1.2'\n"),
+        ("lakefile.toml", "version = 'v1.2.3'\n"),
+        ("lakefile.toml", "version = '01.2.3'\n"),
+        ("lakefile.toml", "version = '1.2.3-beta.1'\n"),
+        ("lakefile.toml", "version = '1.2.3+build'\n"),
+        ("lakefile.toml", "version = '1.2.3'\nversion = '1.2.3'\n"),
+        ("lakefile.toml", "version = [\n"),
         ("Cargo.toml", "[package]\nname = 'pkg'\n"),
         (
             "Cargo.toml",
@@ -264,6 +284,18 @@ fn rejects_invalid_or_indirect_manifest_versions_without_writes() {
         ("package.json", "{\"version\":\"1.2.3-beta.1\"}"),
         ("package.json", "{"),
     ] {
+        let uninitialized = tempfile::tempdir().expect("create init rejection directory");
+        fs::write(uninitialized.path().join(filename), content).expect("write invalid manifest");
+        assert!(
+            changenote::init_with_version_file(uninitialized.path(), "pkg", Path::new(filename))
+                .is_err(),
+            "init accepted {filename}: {content}"
+        );
+        assert!(!uninitialized.path().join(".changenote").exists());
+        assert_eq!(
+            fs::read_to_string(uninitialized.path().join(filename)).expect("read invalid manifest"),
+            content
+        );
         let dir = project(filename, content);
         fs::write(
             dir.path().join(".changenote/change.md"),
@@ -289,6 +321,38 @@ fn rejects_invalid_or_indirect_manifest_versions_without_writes() {
 }
 
 #[test]
+fn real_lake_accepts_updated_package_version() {
+    use std::process::Command;
+
+    if !Command::new("lake")
+        .arg("--version")
+        .output()
+        .is_ok_and(|output| output.status.success())
+    {
+        eprintln!("Skipping real Lake test: tool not installed");
+        return;
+    }
+    let dir = project("lakefile.toml", "name = 'pkg'\nversion = '1.2.3'\n");
+    note(dir.path());
+    changenote::version(dir.path()).expect("update Lake package version");
+    let output = Command::new("lake")
+        .current_dir(dir.path())
+        .args(["translate-config", "toml", "normalized.toml"])
+        .output()
+        .expect("load updated configuration with Lake");
+    assert!(
+        output.status.success(),
+        "Lake rejected the updated configuration: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let normalized = fs::read_to_string(dir.path().join("normalized.toml"))
+        .expect("read normalized Lake configuration")
+        .parse::<toml_edit::DocumentMut>()
+        .expect("parse normalized Lake configuration");
+    assert_eq!(normalized["version"].as_str(), Some("1.3.0"));
+}
+
+#[test]
 fn mixed_language_monorepo_updates_only_noted_packages() {
     let dir = tempfile::tempdir().unwrap();
     fs::create_dir(dir.path().join(".changenote")).unwrap();
@@ -297,6 +361,7 @@ fn mixed_language_monorepo_updates_only_noted_packages() {
         ("python", "pyproject.toml", "[project]\nversion = '0.1.0'\n"),
         ("rust", "Cargo.toml", "[package]\nversion = '0.1.0'\n"),
         ("node", "package.json", "{\"version\":\"0.1.0\"}\n"),
+        ("lean", "lakefile.toml", "name = 'pkg'\nversion = '0.1.0'\n"),
         ("go", "VERSION", "0.1.0\n"),
     ] {
         fs::create_dir(dir.path().join(name)).unwrap();
@@ -314,15 +379,20 @@ fn mixed_language_monorepo_updates_only_noted_packages() {
     changenote::add(
         dir.path(),
         "change",
-        vec!["python".into(), "go".into()],
+        vec!["python".into(), "go".into(), "lean".into()],
         Bump::Patch,
         "Fix",
     )
     .unwrap();
     let releases = changenote::version(dir.path()).unwrap();
-    assert_eq!(releases.len(), 2);
+    assert_eq!(releases.len(), 3);
     assert_eq!(releases[0].tag, "changenote/go@v0.1.1");
-    assert_eq!(releases[1].tag, "changenote/python@v0.1.1");
+    assert_eq!(releases[1].tag, "changenote/lean@v0.1.1");
+    assert_eq!(releases[2].tag, "changenote/python@v0.1.1");
+    assert_eq!(
+        fs::read_to_string(dir.path().join("lean/lakefile.toml")).expect("read Lake manifest"),
+        "name = 'pkg'\nversion = \"0.1.1\"\n"
+    );
     assert_eq!(
         fs::read_to_string(dir.path().join("go/VERSION")).unwrap(),
         "0.1.1\n"

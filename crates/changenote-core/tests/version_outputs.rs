@@ -35,7 +35,8 @@ fn updates_all_formats_and_preserves_saved_batch_shape() {
         "extra",
         "Cargo.toml",
         "pyproject.toml",
-        "package.json"
+        "package.json",
+        "lakefile.toml"
     ]));
     let root = dir.path();
     fs::write(
@@ -53,6 +54,8 @@ fn updates_all_formats_and_preserves_saved_batch_shape() {
         "{\"version\": \"1.2.3\", \"keep\": 1e2}\r\n",
     )
     .unwrap();
+    fs::write(root.join("lakefile.toml"), "version = '1.2.3' # keep\n")
+        .expect("write Lake version output");
     let before = read(root, "package.json");
     let plan = changenote::status(root).unwrap();
     assert_eq!(plan[0].tag, "v1.2.4");
@@ -60,6 +63,7 @@ fn updates_all_formats_and_preserves_saved_batch_shape() {
     changenote::version(root).unwrap();
     assert_eq!(read(root, "VERSION"), "1.2.4\n");
     assert_eq!(read(root, "extra"), "1.2.4\n");
+    assert_eq!(read(root, "lakefile.toml"), "version = \"1.2.4\" # keep\n");
     assert_eq!(
         read(root, "Cargo.toml"),
         "[package]\nversion = \"1.2.4\" # keep\n"

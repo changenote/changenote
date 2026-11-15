@@ -41,6 +41,8 @@ Python version sources support explicit `project.version` and Poetry's
 `tool.poetry.version` in `pyproject.toml`.
 Version-only Poetry releases leave `poetry.lock` unchanged and do not run
 Poetry.
+Lean 4 packages support the top-level `version` in `lakefile.toml` without a Lean
+runtime. Projects with `lakefile.lean` can use a separate `VERSION` file.
 
 For Python wheels and `uvx` usage, see the [Python distribution guide](https://github.com/changenote/changenote/blob/main/python/README.md).
 
@@ -224,6 +226,7 @@ The old skill paths are no longer provided.
 | [PR note checks](https://github.com/changenote/changenote/blob/main/docs/checks.md) | CLI coverage rules, exemptions, file patterns, and a link to the check Action. |
 | [GitHub Actions](https://github.com/changenote/action/blob/main/docs/github-actions.md) | Release workflows, project scripts, tool setup, and external CI. |
 | [Go modules](https://github.com/changenote/changenote/blob/main/docs/go.md) | Root and nested modules, v2+ paths, and tag prefixes. |
+| [Lean 4 packages](https://github.com/changenote/changenote/blob/main/docs/lean.md) | Lake package versions, toolchain pins, and release tags. |
 | [Swift packages and Apple apps](https://github.com/changenote/changenote/blob/main/docs/swift.md) | Xcode version files, build numbers, and Swift Package Manager tags. |
 | [Python distribution](https://github.com/changenote/changenote/blob/main/python/README.md) | Wheels, `uvx`, wrapper development, and PyPI publication. |
 | [Development](https://github.com/changenote/changenote/blob/main/docs/development.md) | Repository layout, local checks, and this repository's release workflow. |
