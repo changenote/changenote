@@ -6,7 +6,7 @@ A user checks local release prerequisites and gets a structured explanation of i
 
 - `doctor-healthy` reports a valid plain-text project.
 - `doctor-invalid-note` reports malformed note data with a failed check.
-- `doctor-read-only` leaves project files and Git refs unchanged on success and failure.
+- `doctor-read-only` leaves project files unchanged on success and failure.
 
 ## How to get to it (user POV)
 
@@ -50,5 +50,7 @@ Preconditions:
 
 - `unknown` is not the same as `fail`.
 - Local Git, cache, and credential readiness can be unknown for this seed.
+- This journey has no Git repository and does not verify preservation of existing Git refs.
+  - That coverage needs a separate Git-backed success-and-failure case before it can be claimed.
 - A successful local doctor does not prove a package-manager cache, hosted permissions, or registry credentials.
 - Do not add lockfiles or fake tools to turn an unknown result into an unsupported success claim.

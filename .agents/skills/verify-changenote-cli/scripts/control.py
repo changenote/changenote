@@ -31,8 +31,8 @@ def save_json(path, value):
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
 
 
-def load_run(path):
-    """Accept only a run owned by this checkout and its marked scratch root."""
+def load_run(path, allow_finalizing=False):
+    """Check ownership, or resume the final removal of an empty scratch root."""
     run = pathlib.Path(path).resolve()
     if run.parent != ARTIFACTS or not run.name.startswith("cli-changenote-"):
         raise ValueError("not a verification run in this checkout")
@@ -46,8 +46,15 @@ def load_run(path):
     ):
         raise ValueError("run ownership mismatch")
     if scratch.exists():
-        owner = (scratch / "owner.txt").read_text(encoding="utf-8")
-        if owner != str(run):
+        owner_path = scratch / "owner.txt"
+        if allow_finalizing and not owner_path.exists():
+            state = json.loads((run / "cleanup.json").read_text(encoding="utf-8"))
+            expected = {
+                "scratch": str(scratch), "removed": False, "finalizing": True,
+            }
+            if state != expected or any(scratch.iterdir()):
+                raise ValueError("missing scratch ownership; do not remove it")
+        elif owner_path.read_text(encoding="utf-8") != str(run):
             raise ValueError("scratch ownership mismatch; do not remove it")
     elif not (run / "cleanup.json").exists():
         raise ValueError("scratch root is missing without a cleanup record")
@@ -141,13 +148,50 @@ def doctor(run_path, emit=True):
         raise ValueError("fixture doctor failed; inspect its evidence")
 
 
+def final_snapshot(fixture, run):
+    """Publish a full snapshot atomically and retain incomplete attempts."""
+    final = run / "final"
+    if final.exists():
+        try:
+            inventory = json.loads((final / "sha256.json").read_text())
+            if isinstance(inventory, dict) and (final / "files").is_dir():
+                return
+        except (OSError, ValueError):
+            pass
+        incomplete = pathlib.Path(
+            tempfile.mkdtemp(prefix=".final-incomplete-", dir=run)
+        )
+        final.rename(incomplete / "snapshot")
+    staging = pathlib.Path(tempfile.mkdtemp(prefix=".final-", dir=run))
+    snapshot(fixture, staging)
+    staging.rename(final)
+
+
 def cleanup(run_path):
-    """Remove only owned scratch state; leave the evidence in place."""
-    run, scratch = load_run(run_path)
+    """Remove owned data before its marker and retain proof across retries."""
+    run, scratch = load_run(run_path, allow_finalizing=True)
     if scratch.exists():
-        if (scratch / "project").is_dir():
-            snapshot(scratch / "project", run / "final")
-        shutil.rmtree(scratch)
+        project = scratch / "project"
+        if project.is_dir() and not project.is_symlink():
+            final_snapshot(project, run)
+        owner = scratch / "owner.txt"
+        for path in scratch.iterdir():
+            if path == owner:
+                continue
+            if path.is_dir() and not path.is_symlink():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+        save_json(run / "cleanup.json", {
+            "scratch": str(scratch), "removed": False, "finalizing": True,
+        })
+        try:
+            owner.unlink(missing_ok=True)
+            scratch.rmdir()
+        except BaseException:
+            if scratch.is_dir() and not owner.exists():
+                owner.write_text(str(run), encoding="utf-8")
+            raise
     save_json(run / "cleanup.json", {"scratch": str(scratch), "removed": True})
     print(f"Evidence retained: {run}", file=sys.stderr)
 

@@ -123,8 +123,13 @@ test ! -e "$FIXTURE"
 ```
 
 Cleanup checks the ownership marker, preserves a final file snapshot, and removes only that run's scratch directory.
-It does not remove evidence or Cargo build outputs.
-It is safe to repeat cleanup.
+It publishes the final snapshot with an atomic directory rename and reuses a completed snapshot on retry.
+Incomplete snapshot attempts remain in separate `.final-*` directories under the evidence path.
+It removes project data before the ownership marker and records the final removal phase before it removes that marker.
+A retry without the marker can remove only the recorded, empty scratch directory.
+A nonempty scratch directory without its matching marker is rejected.
+Cleanup does not remove evidence or Cargo build outputs.
+It is safe to repeat cleanup after a failure.
 No app process stays alive between drives, so there is no process to kill.
 Never kill by process name.
 After cleanup, inspect the saved transcript, command record, snapshots, and `proof.md` to confirm they still exist.
@@ -136,15 +141,17 @@ Its PEP 723 metadata requires Python 3.11 or later and declares no dependencies.
 Its complete interface is `launch`, `doctor RUN`, `drive RUN LABEL COMMAND ARGS...`, and `cleanup RUN`, as shown above.
 Use `uv run --script "$CONTROL" --help` for the command syntax.
 
-Run [the stdin regression tests](scripts/test_control.py) after changes to input handling:
+Run [the helper regression tests](scripts/test_control.py) after changes to input handling or cleanup:
 
 ```bash
 uv run --script .agents/skills/verify-changenote-cli/scripts/test_control.py
 ```
 
-The tests use the real CLI and util-linux `script`; GNU `timeout` prevents an input failure from hanging the suite.
+The stdin tests use the real CLI and util-linux `script`; GNU `timeout` prevents an input failure from hanging the suite.
 They check messages without a final newline, lines longer than the terminal limit, Unicode, CRLF, and terminal control bytes.
-They remove their owned scratch state and retain their proof in the named evidence directory.
+The cleanup tests inject filesystem failures to check snapshot retries, marker retention, and safe final removal.
+These failure checks do not mock the CLI.
+All tests remove their owned scratch state and retain their proof in the named evidence directories.
 
 If a prerequisite is missing or the checkout does not build, retain the failed-run evidence and report the blocker instead of claiming verification.
 

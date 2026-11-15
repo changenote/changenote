@@ -31,7 +31,7 @@ Preconditions:
   uv run --script "$CONTROL" drive "$RUN" plan-default status
   ```
 
-  Require one release with `package: verify-pkg`, `old_version: 1.2.3`, `version: 1.2.4`, `bump: patch`, and both summaries.
+  Require one release with `package: verify-pkg`, `old_version: 1.2.3`, `version: 1.2.4`, `bump: patch`, `tag: v1.2.4`, and both summaries.
   Two patch notes must not produce `1.2.5`.
 - **Highest bump.** Add a minor note and request detailed output.
 
@@ -42,12 +42,22 @@ Preconditions:
     --include-note-types --include-note-sections
   ```
 
-  Require target `1.3.0`, bump `minor`, and three direct notes.
+  Require target `1.3.0`, bump `minor`, tag `v1.3.0`, and three direct notes.
   Paths must align with summaries in filename order: `feature.md`, `first.md`, `second.md`.
   Individual bumps are `minor`, `patch`, and `patch`; the untyped notes have null types.
+  Require `note_sections` to equal this array, including the section and note order:
+
+  ```json
+  [
+    {"title": "Minor Changes", "notes": ["Add a feature."]},
+    {"title": "Patch Changes", "notes": ["First fix.", "Second fix."]}
+  ]
+  ```
 - **Proof.** Compare each status step's before/after inventories and inspect the saved note files.
   Require `VERSION` to remain `1.2.3`, all notes to remain present, and no `CHANGELOG.md` or `.changenote/releases.json`.
-  Record the actual tag and section output in `$RUN/proof.md`.
+  Compare both tags and the detailed sections with the expected values above.
+  Fail the journey if a value, section, or required note is missing or different.
+  Save the comparisons in `$RUN/proof.md`.
 
 ## Gotchas
 
