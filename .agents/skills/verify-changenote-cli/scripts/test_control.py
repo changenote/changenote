@@ -3,11 +3,13 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-"""Check stdin bytes and cleanup retries in the CLI verification helper."""
+"""Check evidence names, stdin bytes, and CLI verification cleanup retries."""
 
+import datetime
 import importlib.util
 import json
 import pathlib
+import re
 import shlex
 import shutil
 import subprocess
@@ -34,6 +36,39 @@ def run_control(*args, data=b"", deadline=None):
     )
 
 
+class EvidenceTests(unittest.TestCase):
+    def test_local_timestamp_and_unique_kebab_case_suffix(self):
+        now = datetime.datetime(2026, 1, 2, 3, 4, 59)
+        with tempfile.TemporaryDirectory(prefix="changenote-evidence-") as parent:
+            artifacts = pathlib.Path(parent) / ".verifications"
+            with (
+                mock.patch.object(control, "ARTIFACTS", artifacts),
+                mock.patch.object(control.datetime, "datetime") as clock,
+            ):
+                clock.now.return_value = now
+                first = control.create_evidence("cli-changenote")
+                second = control.create_evidence("cli-changenote")
+            self.assertNotEqual(first, second)
+            for path in [first, second]:
+                self.assertEqual(path.parent, artifacts)
+                self.assertRegex(
+                    path.name,
+                    r"^2026_01_02_03_04_cli-changenote-[0-9a-f]{16}$",
+                )
+                self.assertTrue(path.is_dir())
+                self.assertEqual(path.stat().st_mode & 0o777, 0o700)
+
+    def test_load_rejects_undated_or_malformed_names(self):
+        for name in [
+            "cli-changenote-0123456789abcdef",
+            "2026_01_02_cli-changenote-0123456789abcdef",
+            "2026_01_02_03_04_cli-changenote-not_valid",
+        ]:
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, "not a verification run"):
+                    control.load_run(control.ARTIFACTS / name)
+
+
 class StdinTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -44,6 +79,11 @@ class StdinTests(unittest.TestCase):
             raise RuntimeError(launched.stderr.decode(errors="replace"))
         cls.evidence = pathlib.Path(launched.stdout.decode().strip())
         cls.addClassCleanup(cls.cleanup)
+        if cls.evidence.parent != control.ARTIFACTS or not re.fullmatch(
+            r"[0-9]{4}(?:_[0-9]{2}){4}_cli-changenote-[0-9a-f]{16}",
+            cls.evidence.name,
+        ):
+            raise AssertionError("launch did not use a timestamped evidence path")
         metadata = json.loads((cls.evidence / "run.json").read_text())
         cls.scratch = pathlib.Path(metadata["scratch"])
         cls.fixture = cls.scratch / "project"
@@ -131,10 +171,7 @@ class StdinTests(unittest.TestCase):
 
 class LaunchTests(unittest.TestCase):
     def setUp(self):
-        control.ARTIFACTS.mkdir(exist_ok=True)
-        self.artifacts = pathlib.Path(tempfile.mkdtemp(
-            prefix="launch-failure-", dir=control.ARTIFACTS,
-        ))
+        self.artifacts = control.create_evidence("launch-failure")
         patcher = mock.patch.object(control, "ARTIFACTS", self.artifacts)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -162,7 +199,7 @@ class LaunchTests(unittest.TestCase):
     def check_failed_launch(self):
         self.assertEqual(len(self.scratch_paths), 1)
         self.assertFalse(self.scratch_paths[0].exists())
-        evidence = next(self.artifacts.glob("cli-changenote-*"))
+        evidence = next(self.artifacts.glob("*_cli-changenote-*"))
         state = json.loads((evidence / "cleanup.json").read_text())
         self.assertEqual(state, {
             "scratch": str(self.scratch_paths[0]), "removed": True,
@@ -220,10 +257,7 @@ class LaunchTests(unittest.TestCase):
 
 class CleanupTests(unittest.TestCase):
     def setUp(self):
-        control.ARTIFACTS.mkdir(exist_ok=True)
-        self.evidence = pathlib.Path(tempfile.mkdtemp(
-            prefix="cli-changenote-", dir=control.ARTIFACTS,
-        ))
+        self.evidence = control.create_evidence("cli-changenote")
         self.scratch = pathlib.Path(tempfile.mkdtemp(
             prefix="changenote-cli-",
         )).resolve()

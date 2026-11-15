@@ -80,7 +80,9 @@ It needs an existing Git identity; do not set or change `user.name` or `user.ema
 
 ## Evidence
 
-Evidence is stored under `.verification/cli-changenote-<unique-suffix>/` at the repository root.
+Evidence is stored under `.verifications/YYYY_MM_DD_HH_MM_cli-changenote-<unique-suffix>/` at the repository root.
+Use the local launch date and time in 24-hour format.
+The unique suffix keeps runs started in the same minute separate.
 Do not commit these ignored artifacts.
 
 - `run.json`, `source.txt`, and `build.txt` identify the project, source revision, working-tree diff, and build.
@@ -145,18 +147,19 @@ Its PEP 723 metadata requires Python 3.11 or later and declares no dependencies.
 Its complete interface is `launch`, `doctor RUN`, `drive RUN LABEL COMMAND ARGS...`, and `cleanup RUN`, as shown above.
 Use `uv run --script "$CONTROL" --help` for the command syntax.
 
-Run [the helper regression tests](scripts/test_control.py) after changes to launch, input handling, or cleanup:
+Run [the helper regression tests](scripts/test_control.py) after changes to evidence naming, launch, input handling, or cleanup:
 
 ```bash
 uv run --script .agents/skills/verify-changenote-cli/scripts/test_control.py
 ```
 
+The evidence tests check the local date and time prefix, unique lowercase suffixes, private directory permissions, and rejection of old or malformed run names.
 The stdin tests use the real CLI and util-linux `script`; GNU `timeout` prevents an input failure from hanging the suite.
 They check messages without a final newline, lines longer than the terminal limit, Unicode, CRLF, and terminal control bytes.
 The setup and cleanup tests inject filesystem failures to check failed registration, snapshot retries, marker retention, and safe final removal.
 These failure checks do not mock the CLI.
-All tests remove their owned scratch state and retain their proof in the named evidence directories.
-Setup-failure proof is kept under `.verification/launch-failure-*/cli-changenote-*/`.
+The CLI, setup, and cleanup tests remove their owned scratch state and retain their proof in the named evidence directories.
+Setup-failure proof is kept under `.verifications/YYYY_MM_DD_HH_MM_launch-failure-<unique-suffix>/YYYY_MM_DD_HH_MM_cli-changenote-<unique-suffix>/`.
 
 If a prerequisite is missing or the checkout does not build, retain the failed-run evidence and report the blocker instead of claiming verification.
 
