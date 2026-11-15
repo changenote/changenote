@@ -22,6 +22,7 @@ nav = [
     { "PR Checks" = "checks.md" },
     { "GitHub Actions" = "https://github.com/changenote/action/blob/main/docs/github-actions.md" },
     { "Language Guides" = [
+      { "Android Apps" = "android.md" },
       { "Go Modules" = "go.md" },
       { "Lean 4 Packages" = "lean.md" },
       { "Swift Packages and Apple Apps" = "swift.md" },

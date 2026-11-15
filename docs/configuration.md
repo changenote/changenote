@@ -78,6 +78,7 @@ For root and nested Go modules, see the [Go release guide](go.md), including v2+
 | `Cargo.toml` | `package.version` |
 | `package.json` | Top-level `version` |
 | `lakefile.toml` | Top-level `version` |
+| `gradle.properties` | `appVersionName`; increment `appVersionCode` on release |
 | `*.xcconfig` | One literal `MARKETING_VERSION` assignment |
 | Other filenames, including `VERSION` | Plain-text stable SemVer string |
 
@@ -109,6 +110,14 @@ The file must be UTF-8 without a BOM and use only spaces, tabs, and LF or CRLF w
 Other configuration files can include this version file; changenote does not evaluate the Xcode build settings.
 See the [Swift release guide](swift.md) for Xcode and XcodeGen setup, migration, build-number rules, and Swift Package Manager tags.
 Upgrade CLI and Action pins together before using this format.
+
+Android `gradle.properties` sources require one literal stable SemVer
+`appVersionName` and one positive canonical decimal `appVersionCode`.
+When the release changes the version, the code increases by one; overflow fails
+before writes. Only the two value tokens change. The same rule applies to an
+additional version output. A Java or Gradle runtime is not required.
+See the [Android release guide](android.md) for the restricted properties syntax,
+code limits, build overrides, and rollout requirements.
 
 ## Additional version files and tag prefixes
 

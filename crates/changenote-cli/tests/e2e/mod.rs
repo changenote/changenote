@@ -4,6 +4,7 @@ mod completion;
 mod config_policies;
 mod doctor;
 mod go_modules;
+mod gradle_properties;
 mod lockfiles;
 mod manifest_versions;
 mod mixed_bumps;

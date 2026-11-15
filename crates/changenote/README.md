@@ -4,7 +4,7 @@ A CLI that turns Markdown change notes into SemVer versions, changelogs, and rel
 Written in Rust. Inspired by [Changesets](https://github.com/changesets/changesets).
 
 - Use one package or a monorepo, in any language.
-- Store versions in plain-text files, package manifests, or Xcode configuration files.
+- Store versions in plain-text files, package manifests, Gradle properties, or Xcode configuration files.
 - Review a release plan before applying it.
 - Release locally or use GitHub Actions for version PRs and publication.
 
@@ -43,6 +43,8 @@ Version-only Poetry releases leave `poetry.lock` unchanged and do not run
 Poetry.
 Lean 4 packages support the top-level `version` in `lakefile.toml` without a Lean
 runtime. Projects with `lakefile.lean` can use a separate `VERSION` file.
+Android `gradle.properties` sources use `appVersionName` and increment
+`appVersionCode` once per release. No Java runtime or Gradle is required.
 
 For Python wheels and `uvx` usage, see the [Python distribution guide](https://github.com/changenote/changenote/blob/main/python/README.md).
 
@@ -225,6 +227,7 @@ The old skill paths are no longer provided.
 | [Release behavior](https://github.com/changenote/changenote/blob/main/docs/releases.md) | Version calculation, saved batches, changelog entries, diagnostics, safety, and recovery. |
 | [PR note checks](https://github.com/changenote/changenote/blob/main/docs/checks.md) | CLI coverage rules, exemptions, file patterns, and a link to the check Action. |
 | [GitHub Actions](https://github.com/changenote/action/blob/main/docs/github-actions.md) | Release workflows, project scripts, tool setup, and external CI. |
+| [Android apps](https://github.com/changenote/changenote/blob/main/docs/android.md) | Native Gradle version properties, build codes, syntax limits, and overrides. |
 | [Go modules](https://github.com/changenote/changenote/blob/main/docs/go.md) | Root and nested modules, v2+ paths, and tag prefixes. |
 | [Lean 4 packages](https://github.com/changenote/changenote/blob/main/docs/lean.md) | Lake package versions, toolchain pins, and release tags. |
 | [Swift packages and Apple apps](https://github.com/changenote/changenote/blob/main/docs/swift.md) | Xcode version files, build numbers, and Swift Package Manager tags. |
