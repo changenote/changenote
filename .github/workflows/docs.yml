@@ -4,12 +4,22 @@ on:
     branches:
       - master
       - main
+
 permissions:
   contents: read
-  pages: write
-  id-token: write
+
+# Deploy one site at a time, including pushes from different branches.
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
 jobs:
   deploy:
+    name: Deploy documentation
+    permissions:
+      contents: read
+      pages: write # Publish the site to GitHub Pages.
+      id-token: write # Authenticate the Pages deployment with OIDC.
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

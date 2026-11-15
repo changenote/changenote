@@ -30,8 +30,64 @@ class Metadata(unittest.TestCase):
                         self.assertRegex(uses, r"^[^@]+@[0-9a-f]{40}$")
                         if uses.startswith("actions/checkout@"):
                             self.assertEqual(step["with"]["persist-credentials"], "false")
-                        if uses.startswith("dtolnay/rust-toolchain@"):
-                            self.assertEqual(step["with"]["toolchain"], "stable")
+
+    def test_workflows_name_every_job(self):
+        for path in (ROOT / ".github/workflows").glob("*.yml"):
+            workflow = read_yaml(path)
+            self.assertTrue(workflow.get("name"))
+            for name, job in workflow["jobs"].items():
+                with self.subTest(workflow=path.name, job=name):
+                    self.assertTrue(job.get("name"))
+                    if path.name == "ci.yml":
+                        # Preserve existing check names for branch protection.
+                        self.assertEqual(job["name"], name)
+
+    def test_ci_and_docs_concurrency(self):
+        ci = read_yaml(ROOT / ".github/workflows/ci.yml")
+        self.assertEqual(ci["concurrency"], {
+            "group": "${{ github.workflow }}-${{ github.ref }}",
+            "cancel-in-progress": "true",
+        })
+        docs = read_yaml(ROOT / ".github/workflows/docs.yml")
+        self.assertEqual(docs["concurrency"], {
+            "group": "github-pages", "cancel-in-progress": "false",
+        })
+
+    def test_docs_limits_deployment_permissions_to_the_job(self):
+        docs = read_yaml(ROOT / ".github/workflows/docs.yml")
+        self.assertEqual(docs["permissions"], {"contents": "read"})
+        self.assertEqual(docs["jobs"]["deploy"]["permissions"], {
+            "contents": "read", "pages": "write", "id-token": "write",
+        })
+
+    def test_linux_jobs_install_stable_rust_with_rustup(self):
+        for workflow, names in (
+            ("ci.yml", ("python", "check")),
+            ("release.yml", ("release", "publish", "crates-io")),
+        ):
+            jobs = read_yaml(ROOT / ".github/workflows" / workflow)["jobs"]
+            for name in names:
+                with self.subTest(workflow=workflow, job=name):
+                    steps = jobs[name]["steps"]
+                    setup = next(
+                        step for step in steps
+                        if step.get("name") == "Set up Rust"
+                    )
+                    self.assertIn(
+                        "rustup toolchain install stable --profile minimal",
+                        setup["run"],
+                    )
+                    self.assertIn("rustup default stable", setup["run"])
+                    if workflow == "ci.yml" and name == "check":
+                        self.assertIn(
+                            "rustup component add rustfmt clippy", setup["run"]
+                        )
+                    for step in steps:
+                        self.assertFalse(step.get("uses", "").startswith(
+                            "dtolnay/rust-toolchain@"
+                        ))
+                        if "cargo " in step.get("run", ""):
+                            self.assertLess(steps.index(setup), steps.index(step))
 
     def test_dependabot_cooldowns(self):
         updates = read_yaml(ROOT / ".github/dependabot.yml")["updates"]
@@ -183,6 +239,12 @@ class Metadata(unittest.TestCase):
         # Routing must run for every event. PR updates must not replace a queued publication.
         self.assertNotIn("concurrency", workflow)
         self.assertNotIn("concurrency", workflow["jobs"]["route"])
+        # Only routing may omit concurrency: every event must be processed.
+        self.assertEqual(
+            {name for name, job in workflow["jobs"].items()
+             if "concurrency" not in job},
+            {"route"},
+        )
         self.assertEqual(workflow["jobs"]["release"]["concurrency"], {
             "group": "changenote-release-pr-main", "cancel-in-progress": "false",
         })
@@ -214,6 +276,33 @@ class Metadata(unittest.TestCase):
             job = workflow["jobs"][name]
             self.assertEqual(job["steps"][0]["with"]["persist-credentials"], "false")
         self.assertEqual(workflow["jobs"]["release"]["steps"][-1]["uses"], ACTION_ROOT)
+
+    def test_wheel_and_pypi_concurrency_keeps_releases_independent(self):
+        jobs = read_yaml(ROOT / ".github/workflows/release.yml")["jobs"]
+        self.assertEqual(jobs["wheels"]["concurrency"], {
+            "group": (
+                "changenote-wheels-${{ needs.publish.outputs.release-commit }}"
+                "-${{ matrix.target }}"
+            ),
+            "cancel-in-progress": "false",
+        })
+        self.assertEqual(jobs["pypi"]["concurrency"], {
+            "group": "changenote-pypi-${{ needs.publish.outputs.release-commit }}",
+            "cancel-in-progress": "false",
+        })
+        targets = [
+            entry["target"]
+            for entry in jobs["wheels"]["strategy"]["matrix"]["include"]
+        ]
+        groups = set()
+        for commit in ("a" * 40, "b" * 40):
+            for target in targets:
+                group = jobs["wheels"]["concurrency"]["group"]
+                group = group.replace(
+                    "${{ needs.publish.outputs.release-commit }}", commit
+                ).replace("${{ matrix.target }}", target)
+                self.assertNotIn(group, groups)
+                groups.add(group)
 
     def test_publication_checks_route_then_preview_before_writes(self):
         steps = read_yaml(ROOT / ".github/workflows/release.yml")["jobs"]["publish"]["steps"]
