@@ -81,8 +81,8 @@ For root and nested Go modules, see the [Go release guide](go.md), including v2+
 | Other filenames, including `VERSION` | Plain-text stable SemVer string |
 
 Manifest versions must be explicit strings. Python manifests use
-`project.version` when present, otherwise `tool.poetry.version`. Only the selected
-field is updated. An unused Poetry version stays unchanged. An invalid
+`project.version` when present, otherwise `tool.poetry.version`. Only the
+selected field is updated. An unused Poetry version stays unchanged. An invalid
 `project.version` is rejected, not replaced by the Poetry value. Dynamic Python
 versions are not supported, even with an explicit Poetry version. This includes
 `project.dynamic` arrays that contain `"version"`. Inherited Cargo workspace
@@ -92,8 +92,9 @@ TOML comments and unrelated fields are preserved. JSON updates replace only the
 top-level version value token. Every other byte is preserved, including
 indentation, line endings, field order, number spelling, and the presence or
 absence of a final newline. Duplicate top-level version keys, including escaped
-spellings of the same key, are rejected. Dependency requirements are not updated.
-Use `init --version-file` to adopt an existing source without changing it.
+spellings of the same key, are rejected. Dependency requirements are not
+updated. Use `init --version-file` to adopt an existing source without
+changing it.
 
 Xcode configuration version files require one unconditional `MARKETING_VERSION = 1.2.3` assignment with an unquoted stable SemVer value.
 Only the version token changes; comments, spacing, line endings, other settings, and build numbers remain unchanged.

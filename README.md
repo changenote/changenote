@@ -39,7 +39,8 @@ Plain-text and Xcode configuration version files need no language runtime or pac
 Manifest releases support Cargo, uv, npm, pnpm, and Bun text lockfiles and need the corresponding [package manager and offline cache](https://github.com/changenote/changenote/blob/main/docs/configuration.md#automatic-lockfile-synchronization).
 Python version sources support explicit `project.version` and Poetry's
 `tool.poetry.version` in `pyproject.toml`.
-Version-only Poetry releases leave `poetry.lock` unchanged and do not run Poetry.
+Version-only Poetry releases leave `poetry.lock` unchanged and do not run
+Poetry.
 
 For Python wheels and `uvx` usage, see the [Python distribution guide](https://github.com/changenote/changenote/blob/main/python/README.md).
 
