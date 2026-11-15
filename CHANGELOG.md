@@ -1,3 +1,11 @@
+## 0.14.1
+
+### Patch Changes
+
+- Sources: [ebb0fbc2ab01](https://github.com/changenote/changenote/commit/ebb0fbc2ab01f7c96bf13547266ab37b9410e51b)
+  
+  Include the root license in Python source archives so PyPI accepts the upload.
+
 ## 0.14.0
 
 ### Minor Changes
