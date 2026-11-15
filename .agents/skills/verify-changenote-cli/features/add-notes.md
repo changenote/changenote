@@ -27,7 +27,7 @@ Preconditions:
   Require exit `0`, a printed path ending in `.changenote/fix-output.md`, and that file's frontmatter assignment `verify-pkg: patch` with body `Fix output formatting.`.
 
   ```bash
-  "$CONTROL" drive "$RUN" add-named add fix-output \
+  uv run --script "$CONTROL" drive "$RUN" add-named add fix-output \
     --package verify-pkg --bump patch --message "Fix output formatting."
   ```
 
@@ -35,7 +35,7 @@ Preconditions:
   Require exit `1`, a collision diagnostic, and identical before/after file inventories.
 
   ```bash
-  if "$CONTROL" drive "$RUN" add-collision add fix-output \
+  if uv run --script "$CONTROL" drive "$RUN" add-collision add fix-output \
     --package verify-pkg --bump patch --message "Must not replace the note."; then
     exit 1
   else
@@ -47,7 +47,7 @@ Preconditions:
   Require one new filename matching `note-[0-9a-f]{32}.md`, assignment `verify-pkg: minor`, and the exact body.
 
   ```bash
-  "$CONTROL" drive "$RUN" add-generated add \
+  uv run --script "$CONTROL" drive "$RUN" add-generated add \
     --minor verify-pkg --message "Add a readable plan."
   ```
 
@@ -56,7 +56,7 @@ Preconditions:
 
   ```bash
   printf 'Read a message file.\n\nKeep both paragraphs.\n' > "$FIXTURE/message.md"
-  "$CONTROL" drive "$RUN" add-file add from-file --patch verify-pkg \
+  uv run --script "$CONTROL" drive "$RUN" add-file add from-file --patch verify-pkg \
     --message-file "$FIXTURE/message.md"
   ```
 
@@ -65,7 +65,7 @@ Preconditions:
 
   ```bash
   printf 'Read a piped message.\n' | \
-    "$CONTROL" drive "$RUN" add-stdin add from-stdin \
+    uv run --script "$CONTROL" drive "$RUN" add-stdin add from-stdin \
       --patch verify-pkg --message-file -
   ```
 
@@ -74,7 +74,7 @@ Preconditions:
   Require `VERSION` to remain `1.2.3`, with no changelog or saved release batch.
 
   ```bash
-  "$CONTROL" drive "$RUN" add-proof status \
+  uv run --script "$CONTROL" drive "$RUN" add-proof status \
     --include-note-paths --include-note-bumps
   ```
 

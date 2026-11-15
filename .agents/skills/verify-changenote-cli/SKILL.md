@@ -19,8 +19,8 @@ There is no server, port, authentication, database, migration, or background pro
 ```bash
 set -euo pipefail
 CONTROL=.agents/skills/verify-changenote-cli/scripts/control.py
-RUN=$("$CONTROL" launch)
-trap '"$CONTROL" cleanup "$RUN"' EXIT
+RUN=$(uv run --script "$CONTROL" launch)
+trap 'uv run --script "$CONTROL" cleanup "$RUN"' EXIT
 FIXTURE=$(uv run --no-project python -c \
   'import json, sys; print(json.load(open(sys.argv[1]))["scratch"] + "/project")' \
   "$RUN/run.json")
@@ -43,7 +43,7 @@ Never drive the user's repository release state or attach to a shared instance.
 Run this read-only check first when a command gives an unexpected result:
 
 ```bash
-"$CONTROL" doctor "$RUN"
+uv run --script "$CONTROL" doctor "$RUN"
 ```
 
 It checks run ownership, executes `--version` from this source checkout, then runs the CLI's `doctor` against the owned project.
@@ -59,7 +59,7 @@ Start a fresh run for each feature unless its preconditions say otherwise.
 For example, read the initial empty release plan with:
 
 ```bash
-"$CONTROL" drive "$RUN" plan-empty status
+uv run --script "$CONTROL" drive "$RUN" plan-empty status
 ```
 
 Use a lowercase kebab-case label that identifies the feature and entry point.
@@ -111,7 +111,7 @@ Run cleanup after success and after every failed journey.
 Keep the EXIT trap active until cleanup succeeds:
 
 ```bash
-"$CONTROL" cleanup "$RUN"
+uv run --script "$CONTROL" cleanup "$RUN"
 trap - EXIT
 test -s "$RUN/cleanup.json"
 test -s "$RUN/build.txt"
@@ -128,9 +128,10 @@ After cleanup, inspect the saved transcript, command record, snapshots, and `pro
 
 ## Helpers
 
-[control.py](scripts/control.py) is executable and uses uv through its shebang.
+Always run [control.py](scripts/control.py) with `uv run --script`; do not execute its path directly.
+Its PEP 723 metadata requires Python 3.11 or later and declares no dependencies.
 Its complete interface is `launch`, `doctor RUN`, `drive RUN LABEL COMMAND ARGS...`, and `cleanup RUN`, as shown above.
-Use `"$CONTROL" --help` for the command syntax.
+Use `uv run --script "$CONTROL" --help` for the command syntax.
 If a prerequisite is missing or the checkout does not build, retain the failed-run evidence and report the blocker instead of claiming verification.
 
 Use `/maintain-verification-skill` to update this skill and its feature map when user paths change.

@@ -23,16 +23,16 @@ Preconditions:
 - Seed the changelog below only as input to the reader.
   It is verification scaffolding, not proof that release generation works.
 
-- **Embedded skill.** Run `"$CONTROL" drive "$RUN" text-skill skill`.
+- **Embedded skill.** Run `uv run --script "$CONTROL" drive "$RUN" text-skill skill`.
   Require YAML frontmatter and compare the normalized output bytes with `crates/changenote-skill/SKILL.md`.
   The CLI does not read the new local verification skill.
 - **Completions.** Run all three user entry points.
   Require nonempty shell-specific output that contains `changenote` and known commands such as `status` and `doctor`.
 
   ```bash
-  "$CONTROL" drive "$RUN" text-completion-bash completion bash
-  "$CONTROL" drive "$RUN" text-completion-zsh completion zsh
-  "$CONTROL" drive "$RUN" text-completion-fish completion fish
+  uv run --script "$CONTROL" drive "$RUN" text-completion-bash completion bash
+  uv run --script "$CONTROL" drive "$RUN" text-completion-zsh completion zsh
+  uv run --script "$CONTROL" drive "$RUN" text-completion-fish completion fish
   ```
 
 - **Exact version.** Seed two distinguishable changelog entries, then read the older entry.
@@ -40,7 +40,7 @@ Preconditions:
   ```bash
   printf '# Changelog\n\n## 1.3.0\n\nNew behavior.\n\n## 1.2.3\n\nOld behavior.\n' \
     > "$FIXTURE/CHANGELOG.md"
-  "$CONTROL" drive "$RUN" text-release-notes release-notes \
+  uv run --script "$CONTROL" drive "$RUN" text-release-notes release-notes \
     --package verify-pkg --version 1.2.3
   ```
 
@@ -48,7 +48,7 @@ Preconditions:
 - **Missing version.** Require exit `1`, an explanatory diagnostic, and no returned changelog body.
 
   ```bash
-  if "$CONTROL" drive "$RUN" text-missing-version release-notes \
+  if uv run --script "$CONTROL" drive "$RUN" text-missing-version release-notes \
     --package verify-pkg --version 9.9.9; then
     exit 1
   else

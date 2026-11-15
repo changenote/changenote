@@ -44,7 +44,7 @@ Preconditions:
 - **Missing note.** Require exit `1` and JSON with `passed: false`, changed package `verify-pkg`, and no note paths.
 
   ```bash
-  if "$CONTROL" drive "$RUN" check-missing check --since "$BASE"; then
+  if uv run --script "$CONTROL" drive "$RUN" check-missing check --since "$BASE"; then
     exit 1
   else
     test "$?" -eq 1
@@ -55,7 +55,7 @@ Preconditions:
   Require exit `0`, `passed: true`, `skip_reason: Documentation only`, and `uncovered_packages: ["verify-pkg"]`.
 
   ```bash
-  "$CONTROL" drive "$RUN" check-exemption check --since "$BASE" \
+  uv run --script "$CONTROL" drive "$RUN" check-exemption check --since "$BASE" \
     --coverage package --skip-release --reason "Documentation only"
   ```
 
@@ -63,13 +63,13 @@ Preconditions:
   Require passing reports; the package report must list `verify-pkg` as covered with no uncovered packages.
 
   ```bash
-  "$CONTROL" drive "$RUN" check-note add behavior-change \
+  uv run --script "$CONTROL" drive "$RUN" check-note add behavior-change \
     --patch verify-pkg --message "Fix fixture behavior."
   git -C "$FIXTURE" add -- .changenote/behavior-change.md
   git -C "$FIXTURE" -c core.hooksPath=/dev/null -c commit.gpgSign=false \
     commit -m "test: cover fixture behavior"
-  "$CONTROL" drive "$RUN" check-pr check --since "$BASE"
-  "$CONTROL" drive "$RUN" check-package check --since "$BASE" --coverage package
+  uv run --script "$CONTROL" drive "$RUN" check-pr check --since "$BASE"
+  uv run --script "$CONTROL" drive "$RUN" check-package check --since "$BASE" --coverage package
   ```
 
 - **Configured base.** Add `base_branch` to the fixture configuration and commit only that file.
@@ -85,7 +85,7 @@ Preconditions:
   git -C "$FIXTURE" add -- .changenote/config.json
   git -C "$FIXTURE" -c core.hooksPath=/dev/null -c commit.gpgSign=false \
     commit -m "test: configure fixture comparison"
-  "$CONTROL" drive "$RUN" check-configured-base check
+  uv run --script "$CONTROL" drive "$RUN" check-configured-base check
   ```
 
   Require the same merge base and passing note coverage.

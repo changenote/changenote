@@ -1,4 +1,8 @@
-#!/usr/bin/env -S uv run --no-project python
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
 """Drive the source CLI in disposable projects and retain terminal evidence."""
 
 import argparse

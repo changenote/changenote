@@ -21,14 +21,14 @@ Preconditions:
 - Start from the fresh baseline project with no notes.
 - No release execution is authorized or needed.
 
-- **Empty plan.** Run `"$CONTROL" drive "$RUN" plan-empty status`.
+- **Empty plan.** Run `uv run --script "$CONTROL" drive "$RUN" plan-empty status`.
   Require exit `0`, JSON `[]`, and unchanged inventories.
 - **Two patch notes.** Create notes through the public command.
 
   ```bash
-  "$CONTROL" drive "$RUN" plan-first add first --patch verify-pkg --message "First fix."
-  "$CONTROL" drive "$RUN" plan-second add second --patch verify-pkg --message "Second fix."
-  "$CONTROL" drive "$RUN" plan-default status
+  uv run --script "$CONTROL" drive "$RUN" plan-first add first --patch verify-pkg --message "First fix."
+  uv run --script "$CONTROL" drive "$RUN" plan-second add second --patch verify-pkg --message "Second fix."
+  uv run --script "$CONTROL" drive "$RUN" plan-default status
   ```
 
   Require one release with `package: verify-pkg`, `old_version: 1.2.3`, `version: 1.2.4`, `bump: patch`, and both summaries.
@@ -36,8 +36,8 @@ Preconditions:
 - **Highest bump.** Add a minor note and request detailed output.
 
   ```bash
-  "$CONTROL" drive "$RUN" plan-minor add feature --minor verify-pkg --message "Add a feature."
-  "$CONTROL" drive "$RUN" plan-details status \
+  uv run --script "$CONTROL" drive "$RUN" plan-minor add feature --minor verify-pkg --message "Add a feature."
+  uv run --script "$CONTROL" drive "$RUN" plan-details status \
     --include-note-paths --include-note-bumps \
     --include-note-types --include-note-sections
   ```

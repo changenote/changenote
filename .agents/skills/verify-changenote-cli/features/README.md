@@ -10,7 +10,7 @@ Use the parent skill's launch block to set `CONTROL`, `RUN`, and `FIXTURE`.
 - Package `verify-pkg` starts at `1.2.3` in a plain-text `VERSION` file.
 - There are no notes, changelog, Git history, lockfiles, or external credentials.
 - Launch already proves plain-text initialization from an empty directory.
-- Run `"$CONTROL" doctor "$RUN"` before a journey when readiness is unclear.
+- Run `uv run --script "$CONTROL" doctor "$RUN"` before a journey when readiness is unclear.
 - Only the PR-check journey requires Git commits and a preconfigured Git identity.
 
 ## Driving conventions

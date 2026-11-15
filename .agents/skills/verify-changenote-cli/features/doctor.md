@@ -20,14 +20,14 @@ Preconditions:
 - Start from the fresh baseline project.
 - No package-manager lockfile, credentials, or Git history is required.
 
-- **Healthy input.** Run `"$CONTROL" doctor "$RUN"`.
+- **Healthy input.** Run `uv run --script "$CONTROL" doctor "$RUN"`.
   Require a matching CLI build version and doctor JSON with `passed: true`.
   Checks `config`, `notes`, `plan`, and `lockfiles` must pass.
 - **Malformed note.** Write only the invalid-input prerequisite, then run the public command.
 
   ```bash
   printf 'Not a valid change note.\n' > "$FIXTURE/.changenote/bad.md"
-  if "$CONTROL" drive "$RUN" doctor-invalid-note doctor; then
+  if uv run --script "$CONTROL" drive "$RUN" doctor-invalid-note doctor; then
     exit 1
   else
     test "$?" -eq 1
@@ -39,7 +39,7 @@ Preconditions:
 
   ```bash
   rm -- "$FIXTURE/.changenote/bad.md"
-  "$CONTROL" doctor "$RUN"
+  uv run --script "$CONTROL" doctor "$RUN"
   ```
 
   Require `passed: true` again.
