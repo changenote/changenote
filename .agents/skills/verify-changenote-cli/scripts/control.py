@@ -208,12 +208,16 @@ def launch():
         raise ValueError("this helper requires the util-linux script command")
     ARTIFACTS.mkdir(exist_ok=True)
     run = pathlib.Path(tempfile.mkdtemp(prefix="cli-changenote-", dir=ARTIFACTS))
-    scratch = pathlib.Path(tempfile.mkdtemp(prefix="changenote-cli-")).resolve()
-    (scratch / "owner.txt").write_text(str(run), encoding="utf-8")
-    (scratch / "project").mkdir()
-    save_json(run / "run.json", {"repo": str(REPO), "scratch": str(scratch)})
+    scratch = None
+    registered = False
     print(f"Run: {run}", file=sys.stderr)
     try:
+        scratch = pathlib.Path(tempfile.mkdtemp(prefix="changenote-cli-"))
+        scratch = scratch.resolve()
+        save_json(run / "run.json", {"repo": str(REPO), "scratch": str(scratch)})
+        (scratch / "owner.txt").write_text(str(run), encoding="utf-8")
+        registered = True
+        (scratch / "project").mkdir()
         with (run / "source.txt").open("wb") as log:
             for args in [
                 ["rev-parse", "HEAD"], ["status", "--short"], ["diff", "HEAD"]
@@ -232,7 +236,13 @@ def launch():
             raise ValueError("initialization failed")
         doctor(run, emit=False)
     except BaseException:
-        cleanup(run)
+        if registered:
+            cleanup(run)
+        elif scratch is not None:
+            shutil.rmtree(scratch)
+            save_json(run / "cleanup.json", {
+                "scratch": str(scratch), "removed": True,
+            })
         raise
     print(run)
 

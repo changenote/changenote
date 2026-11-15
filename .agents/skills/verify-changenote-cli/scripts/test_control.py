@@ -129,6 +129,95 @@ class StdinTests(unittest.TestCase):
         )
 
 
+class LaunchTests(unittest.TestCase):
+    def setUp(self):
+        control.ARTIFACTS.mkdir(exist_ok=True)
+        self.artifacts = pathlib.Path(tempfile.mkdtemp(
+            prefix="launch-failure-", dir=control.ARTIFACTS,
+        ))
+        patcher = mock.patch.object(control, "ARTIFACTS", self.artifacts)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.scratch_paths = []
+        self.addCleanup(self.finish)
+        allocate = tempfile.mkdtemp
+
+        def record_allocation(*args, **kwargs):
+            path = allocate(*args, **kwargs)
+            if kwargs.get("prefix") == "changenote-cli-":
+                self.scratch_paths.append(pathlib.Path(path).resolve())
+            return path
+
+        patcher = mock.patch.object(
+            control.tempfile, "mkdtemp", side_effect=record_allocation,
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def finish(self):
+        for path in self.scratch_paths:
+            if path.exists():
+                shutil.rmtree(path)
+
+    def check_failed_launch(self):
+        self.assertEqual(len(self.scratch_paths), 1)
+        self.assertFalse(self.scratch_paths[0].exists())
+        evidence = next(self.artifacts.glob("cli-changenote-*"))
+        state = json.loads((evidence / "cleanup.json").read_text())
+        self.assertEqual(state, {
+            "scratch": str(self.scratch_paths[0]), "removed": True,
+        })
+        (evidence / "proof.md").write_text(
+            f"# Launch failure proof\n\nPASS: {self.id()}\n"
+            "The failed setup left no scratch state.\n"
+        )
+
+    def test_marker_write_failure_removes_allocation(self):
+        write = pathlib.Path.write_text
+
+        def fail_marker(path, *args, **kwargs):
+            if path.name == "owner.txt":
+                raise OSError("test marker write failure")
+            return write(path, *args, **kwargs)
+
+        with mock.patch.object(pathlib.Path, "write_text", autospec=True,
+                               side_effect=fail_marker):
+            with self.assertRaisesRegex(OSError, "test marker write failure"):
+                control.launch()
+        self.check_failed_launch()
+
+    def test_metadata_write_failure_removes_allocation(self):
+        save = control.save_json
+
+        def fail_metadata(path, value):
+            if path.name == "run.json":
+                raise OSError("test metadata write failure")
+            return save(path, value)
+
+        with mock.patch.object(control, "save_json", side_effect=fail_metadata):
+            with self.assertRaisesRegex(OSError, "test metadata write failure"):
+                control.launch()
+        self.check_failed_launch()
+
+    def test_project_setup_failure_uses_owned_cleanup(self):
+        mkdir = pathlib.Path.mkdir
+
+        def fail_project(path, *args, **kwargs):
+            if path.name == "project":
+                raise OSError("test project setup failure")
+            return mkdir(path, *args, **kwargs)
+
+        with (
+            mock.patch.object(pathlib.Path, "mkdir", autospec=True,
+                              side_effect=fail_project),
+            mock.patch.object(control, "cleanup", wraps=control.cleanup) as cleanup,
+        ):
+            with self.assertRaisesRegex(OSError, "test project setup failure"):
+                control.launch()
+        cleanup.assert_called_once()
+        self.check_failed_launch()
+
+
 class CleanupTests(unittest.TestCase):
     def setUp(self):
         control.ARTIFACTS.mkdir(exist_ok=True)
@@ -249,6 +338,22 @@ class CleanupTests(unittest.TestCase):
             control.load_run(self.evidence)
         control.cleanup(self.evidence)
         self.assertFalse(self.scratch.exists())
+
+    def test_completion_record_failure_can_retry(self):
+        save = control.save_json
+
+        def fail_completion(path, value):
+            if path.name == "cleanup.json" and value["removed"]:
+                raise OSError("test completion record failure")
+            return save(path, value)
+
+        with mock.patch.object(control, "save_json", side_effect=fail_completion):
+            with self.assertRaisesRegex(OSError, "test completion record failure"):
+                control.cleanup(self.evidence)
+        self.assertFalse(self.scratch.exists())
+        control.cleanup(self.evidence)
+        state = json.loads((self.evidence / "cleanup.json").read_text())
+        self.assertTrue(state["removed"])
 
     def test_missing_owner_cannot_authorize_nonempty_state(self):
         self.set_finalizing()

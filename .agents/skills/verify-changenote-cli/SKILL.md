@@ -31,6 +31,8 @@ It runs all CLI commands from this checkout through `cargo run --locked --quiet 
 Ready means initialization succeeded, the build version matches `crates/changenote/Cargo.toml`, and `doctor` reports `passed: true`.
 The project has no pending notes, Git repository, or package-manager lockfiles.
 A failed launch cleans its scratch directory and prints the retained evidence path to stderr.
+Scratch setup is inside the launch error handler.
+Before ownership registration succeeds, cleanup removes only the directory created by that launch.
 
 Each launch has a separate temporary data directory and a separate evidence directory.
 Two runs can use different projects at the same time; Cargo can wait for its shared build lock.
@@ -141,7 +143,7 @@ Its PEP 723 metadata requires Python 3.11 or later and declares no dependencies.
 Its complete interface is `launch`, `doctor RUN`, `drive RUN LABEL COMMAND ARGS...`, and `cleanup RUN`, as shown above.
 Use `uv run --script "$CONTROL" --help` for the command syntax.
 
-Run [the helper regression tests](scripts/test_control.py) after changes to input handling or cleanup:
+Run [the helper regression tests](scripts/test_control.py) after changes to launch, input handling, or cleanup:
 
 ```bash
 uv run --script .agents/skills/verify-changenote-cli/scripts/test_control.py
@@ -149,9 +151,10 @@ uv run --script .agents/skills/verify-changenote-cli/scripts/test_control.py
 
 The stdin tests use the real CLI and util-linux `script`; GNU `timeout` prevents an input failure from hanging the suite.
 They check messages without a final newline, lines longer than the terminal limit, Unicode, CRLF, and terminal control bytes.
-The cleanup tests inject filesystem failures to check snapshot retries, marker retention, and safe final removal.
+The setup and cleanup tests inject filesystem failures to check failed registration, snapshot retries, marker retention, and safe final removal.
 These failure checks do not mock the CLI.
 All tests remove their owned scratch state and retain their proof in the named evidence directories.
+Setup-failure proof is kept under `.verification/launch-failure-*/cli-changenote-*/`.
 
 If a prerequisite is missing or the checkout does not build, retain the failed-run evidence and report the blocker instead of claiming verification.
 
