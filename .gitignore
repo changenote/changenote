@@ -51,6 +51,9 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
+# Local verification artifacts
+/.verification/
+
 # Translations
 *.mo
 *.pot
