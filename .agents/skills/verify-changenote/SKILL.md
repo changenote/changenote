@@ -141,8 +141,9 @@ After the build, complete these browser checks:
 2. Open the homepage and affected pages in a browser, read their content, and test changed navigation or interactive behavior.
    - If no pages changed, include a representative guide page.
 3. Capture screenshots of each inspected page at desktop and mobile viewport sizes after rendering finishes.
-   - Save screenshots under `.verification/<type>-<scope>-<topic>/` at the repository root; create the directory when needed.
-   - Use lowercase kebab-case for the verification type, component scope, and topic, such as `.verification/visual-zensical-navigation/`.
+   - Save screenshots under `.verifications/YYYY_MM_DD_HH_MM_<type>-<scope>-<topic>/` at the repository root; create the directory when needed.
+   - Use the local start date and time in 24-hour format for `YYYY_MM_DD_HH_MM`.
+   - Use lowercase kebab-case for the verification type, component scope, and topic, such as `.verifications/2026_01_02_03_04_visual-zensical-navigation/`.
    - Include the page and viewport in each filename, such as `index-desktop.png` or `configuration-mobile.png`.
 4. Open and visually inspect the screenshot images against the requested result, supplied references, and existing site design.
    - Check navigation, text, tables, code blocks, and images for clipping, overlap, overflow, and unreadable content.

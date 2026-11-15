@@ -52,7 +52,7 @@ coverage.xml
 .pytest_cache/
 
 # Local verification artifacts
-/.verification/
+/.verifications/
 
 # Translations
 *.mo

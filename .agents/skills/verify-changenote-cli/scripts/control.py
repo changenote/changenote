@@ -6,10 +6,12 @@
 """Drive the source CLI in disposable projects and retain terminal evidence."""
 
 import argparse
+import datetime
 import hashlib
 import json
 import pathlib
 import re
+import secrets
 import shlex
 import shutil
 import subprocess
@@ -19,12 +21,21 @@ import tomllib
 
 
 REPO = pathlib.Path(__file__).resolve().parents[4]
-ARTIFACTS = REPO / ".verification"
+ARTIFACTS = REPO / ".verifications"
 ALLOWED = {
     "init", "add", "status", "check", "doctor", "release-notes",
     "skill", "completion", "--help", "--version",
 }
 READ_ONLY = ALLOWED - {"init", "add"}
+
+
+def create_evidence(prefix):
+    """Create a private evidence directory with local time and a unique suffix."""
+    ARTIFACTS.mkdir(exist_ok=True)
+    timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
+    run = ARTIFACTS / f"{timestamp}_{prefix}-{secrets.token_hex(8)}"
+    run.mkdir(mode=0o700)
+    return run
 
 
 def save_json(path, value):
@@ -34,7 +45,9 @@ def save_json(path, value):
 def load_run(path, allow_finalizing=False):
     """Check ownership, or resume the final removal of an empty scratch root."""
     run = pathlib.Path(path).resolve()
-    if run.parent != ARTIFACTS or not run.name.startswith("cli-changenote-"):
+    if run.parent != ARTIFACTS or not re.fullmatch(
+        r"[0-9]{4}(?:_[0-9]{2}){4}_cli-changenote-[0-9a-f]{16}", run.name,
+    ):
         raise ValueError("not a verification run in this checkout")
     metadata = json.loads((run / "run.json").read_text(encoding="utf-8"))
     scratch = pathlib.Path(metadata["scratch"])
@@ -208,8 +221,7 @@ def launch():
     )
     if b"util-linux" not in check.stdout:
         raise ValueError("this helper requires the util-linux script command")
-    ARTIFACTS.mkdir(exist_ok=True)
-    run = pathlib.Path(tempfile.mkdtemp(prefix="cli-changenote-", dir=ARTIFACTS))
+    run = create_evidence("cli-changenote")
     scratch = None
     registered = False
     print(f"Run: {run}", file=sys.stderr)
