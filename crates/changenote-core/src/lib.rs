@@ -3,6 +3,7 @@ mod check;
 mod config;
 mod doctor;
 mod generated;
+mod gradle_properties;
 mod init;
 mod json_value;
 mod lockfile;

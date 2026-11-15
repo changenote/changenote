@@ -108,6 +108,20 @@ Lean 4.35.0 and its bundled Lake were verified. Check that the output does not
 contain `Skipping real Lake test`. The CLI tests also verify version updates
 with no Lean or Lake executable in `PATH`.
 
+The real Java properties test compares Android version sources with Java's
+`Properties` reader before and after a temporary release. It also checks that
+ambiguous values are rejected. With a JDK that supports source-file mode in
+`PATH`, run:
+
+```sh
+cargo test --locked -p changenote-core --test gradle_properties real_java -- --show-output
+```
+
+Temurin JDK 25.0.5+8 was verified. This check must not print
+`Skipping real Java properties test`. Normal CLI use needs no Java or Gradle.
+The Android CLI tests cover an empty `PATH` and restoration of both properties
+after a later lockfile command fails.
+
 To install from this checkout, run `cargo install --locked --path crates/changenote`.
 Registry installation remains `cargo install changenote --locked`.
 

@@ -1,3 +1,4 @@
+use crate::gradle_properties::GradleProperties;
 use crate::json_value::{self, JsonValue};
 use anyhow::{Context, Result, ensure};
 use semver::Version;
@@ -6,9 +7,10 @@ use std::ops::Range;
 use std::path::Path;
 use toml_edit::{DocumentMut, Value};
 
-// Manifest filenames and the xcconfig extension select fields. Other files remain plain text.
+// Known filenames and the xcconfig extension select fields. Other files remain plain text.
 enum VersionFile {
     Plain,
+    Gradle(GradleProperties),
     Json {
         document: JsonValue,
         content: String,
@@ -28,6 +30,7 @@ impl VersionFile {
     fn load(path: &Path) -> Result<(Self, Version)> {
         let content = fs::read_to_string(path)?;
         let file = match path.file_name().and_then(|name| name.to_str()) {
+            Some("gradle.properties") => Self::Gradle(GradleProperties::parse(content.clone())?),
             Some("package.json") => Self::Json {
                 document: serde_json::from_str(&content)?,
                 span: json_value::version_span(&content)?,
@@ -78,6 +81,7 @@ impl VersionFile {
         };
         let text = match &file {
             Self::Plain => content.trim().to_owned(),
+            Self::Gradle(properties) => properties.version().to_owned(),
             Self::Xcconfig { content, span } => content[span.clone()].to_owned(),
             Self::Json { document, .. } => {
                 document
@@ -174,6 +178,7 @@ pub(crate) fn version_content(path: &Path, version: &Version, legacy: bool) -> R
         .with_context(|| format!("invalid version in {}", path.display()))?;
     match file {
         VersionFile::Plain => Ok(format!("{version}\n")),
+        VersionFile::Gradle(properties) => properties.with_version(version),
         VersionFile::Xcconfig { mut content, span } => {
             content.replace_range(span, &version.to_string());
             Ok(content)
