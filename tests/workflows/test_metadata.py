@@ -1,6 +1,7 @@
 """Check CLI workflow permissions, release selection, and distribution gates."""
 
 import re
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -108,7 +109,7 @@ class Metadata(unittest.TestCase):
             self.assertIn(gate, distribution)
 
     def test_changelog_fixture_newlines_are_preserved(self):
-        config = read_yaml(ROOT / ".pre-commit-config.yaml")
+        config = tomllib.loads((ROOT / "prek.toml").read_text())
         hook = next(
             hook for repo in config["repos"] for hook in repo["hooks"]
             if hook["id"] == "end-of-file-fixer"
