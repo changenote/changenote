@@ -38,11 +38,13 @@ changenote --help
 ## Release prerequisites
 
 - Git is required for PR note checks and local tags.
-  - Optional [commit source links](notes.md#automatic-commit-source-links) also require Git and complete local note history.
+  - Optional [commit source links](changelogs.md#automatic-commit-source-links) also require Git and complete local note history.
 - Manifest releases need the package manager and offline cache for each supported existing lockfile.
-  - See [automatic lockfile synchronization](configuration.md#automatic-lockfile-synchronization) for supported tools and formats.
+  - See [automatic lockfile synchronization](lockfiles.md) for supported tools and formats.
 - Plain-text and Xcode configuration version files need no package manager for version updates.
 
 ## Next step
 
 Follow the [Quickstart](index.md) to configure a package and prepare its first release.
+For an agent-led workflow, see [Use with AI agents](agents.md).
+For command options and shell completion, see [CLI commands](commands.md).

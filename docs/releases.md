@@ -3,15 +3,6 @@
 Review the release plan before changing files.
 Use a clean checkout and run only one local version command at a time.
 
-- [Version calculation](#version-calculation)
-- [Release outputs](#release-outputs)
-- [Changelog entries](#changelog-entries)
-- [Read a release entry](#read-a-release-entry)
-- [Local tags](#local-tags)
-- [Local diagnostics](#local-diagnostics)
-- [Release-write recovery](#release-write-recovery)
-- [Scope and safety](#scope-and-safety)
-
 ## Version calculation
 
 `status` prints the pending plan as JSON without changing files.
@@ -22,7 +13,7 @@ Multiple patch notes cause one patch bump, not multiple bumps.
 Major, minor, and patch follow stable SemVer rules, including versions below 1.0.0.
 
 Packages without notes remain unchanged unless they belong to an active fixed group.
-See [fixed and linked version groups](configuration.md#fixed-version-groups) for group rules.
+See [Version groups](version-groups.md) for fixed and linked group rules.
 
 ## Release outputs
 
@@ -41,7 +32,7 @@ Pending `status` and `version` command output still include notes.
 A run without pending releases does not change files or clear the saved batch.
 Paused notes remain pending.
 
-For lockfile tools, offline cache requirements, and supported formats, see [automatic lockfile synchronization](configuration.md#automatic-lockfile-synchronization).
+For lockfile tools, offline cache requirements, and supported formats, see [automatic lockfile synchronization](lockfiles.md).
 
 ## Changelog entries
 
@@ -53,11 +44,11 @@ By default, notes are grouped by their own bump under `Major Changes`, `Minor Ch
 Empty groups are omitted.
 Multiline Markdown remains inside each note's list item.
 
-You can configure [note types and changelog sections](notes.md#note-types-and-changelog-sections) or [output controls and templates](notes.md#changelog-output-controls-and-native-templates).
+You can configure [note types and changelog sections](changelogs.md#note-types-and-changelog-sections) or [output controls and templates](changelogs.md#changelog-output-controls-and-native-templates).
 Keep changelog output enabled for built-in GitHub publication.
 Disabling output does not preserve consumed summaries elsewhere.
 
-Optional [commit source links](notes.md#automatic-commit-source-links) use the checked-out note history and `changelog.source_repository`.
+Optional [commit source links](changelogs.md#automatic-commit-source-links) use the checked-out note history and `changelog.source_repository`.
 Source checks for all consumed notes finish before version files, lockfiles, changelogs, or saved batches change.
 Missing source evidence is an error for versioning, not permission to use the current branch tip.
 Publication reconstructs links from the selected historical parent and compares the complete release tree.
@@ -121,7 +112,7 @@ A dirty tree or a nested Git root fails the Git check; unavailable Git or a non-
 Cache and remote credential readiness remain unknown.
 Thus `passed: true` means no local check failed, not that publication is ready or authorized.
 For Node.js manifests, the nearest supported lockfile selects npm, pnpm, or Bun.
-Ambiguous lockfiles fail diagnostics before tool checks. See the [selection rules](configuration.md#automatic-lockfile-synchronization).
+Ambiguous lockfiles fail diagnostics before tool checks. See the [selection rules](lockfiles.md#select-a-lockfile).
 Rust callers can use `doctor()` and its structured report types.
 
 ## Release-write recovery
@@ -140,7 +131,7 @@ Use a clean checkout, review the result, and do not run concurrent local version
 ## Scope and safety
 
 - Primary version files are the release version source.
-  - Use a stable SemVer version in the [supported version field](configuration.md#package-configuration).
+  - Use a stable SemVer version in the [supported version field](version-files.md#supported-formats).
   - The CLI's `--version` reports its Cargo build version, not a configured package version.
 - Releases update configured primary and additional version files and supported existing lockfiles.
   - Unlisted manifests and internal dependency requirements are **not** updated.

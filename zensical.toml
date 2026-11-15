@@ -11,24 +11,37 @@ repo_name = "changenote/changenote"
 # edit_uri = "edit/main/docs/"
 
 nav = [
-  { "Getting Started" = [
-    { "Installation" = "installation.md" },
+  { "Getting started" = [
     { "Quickstart" = "index.md" },
+    { "Installation" = "installation.md" },
+    { "Use with AI agents" = "agents.md" },
   ] },
-  { "Usage" = [
-    { "Configuration" = "configuration.md" },
-    { "Change Notes" = "notes.md" },
-    { "Releases" = "releases.md" },
-    { "PR Checks" = "checks.md" },
+  { "Guides" = [
+    { "Write change notes" = "notes.md" },
+    { "Release behavior" = "releases.md" },
+    { "Check PR notes" = "checks.md" },
     { "GitHub Actions (external)" = "https://github.com/changenote/action/blob/main/docs/github-actions.md" },
-    { "Language Guides" = [
-      { "Android Apps" = "android.md" },
-      { "Go Modules" = "go.md" },
-      { "Lean 4 Packages" = "lean.md" },
-      { "Swift Packages and Apple Apps" = "swift.md" },
-    ] },
   ] },
-  { "Development" = "development.md" },
+  { "Configuration" = [
+    { "Package configuration" = "configuration.md" },
+    { "Version sources" = "version-files.md" },
+    { "Version groups" = "version-groups.md" },
+    { "Lockfile synchronization" = "lockfiles.md" },
+    { "Changelog configuration" = "changelogs.md" },
+  ] },
+  { "Integrations" = [
+    { "Android apps" = "android.md" },
+    { "Go modules" = "go.md" },
+    { "Lean 4 packages" = "lean.md" },
+    { "Swift packages and Apple apps" = "swift.md" },
+  ] },
+  { "Reference" = [
+    { "CLI commands" = "commands.md" },
+  ] },
+  { "Maintainers" = [
+    { "Development" = "development.md" },
+    { "Maintainer releases" = "maintainer-releases.md" },
+  ] },
 ]
 
 # extra_css = ["stylesheets/extra.css"]
@@ -58,8 +71,8 @@ features = [
   "navigation.path",
   # "navigation.prune",
   "navigation.sections",
-  # "navigation.tabs",
-  # "navigation.tabs.sticky",
+  "navigation.tabs",
+  "navigation.tabs.sticky",
   "navigation.top",
   "navigation.tracking",
   "search.highlight",

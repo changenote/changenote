@@ -3,10 +3,7 @@
 Check committed PR changes without changing files.
 The CLI defaults to PR-level coverage; use `--coverage package` for direct notes on every changed package.
 The separate [check Action](https://github.com/changenote/action/blob/main/docs/checks.md) defaults to package coverage.
-
-- [CLI check](#cli-check)
-- [File patterns for note checks](#file-patterns-for-note-checks)
-- [GitHub Action report](https://github.com/changenote/action/blob/main/docs/checks.md#github-action-report)
+For a short option reference, see [`check`](commands.md#check).
 
 ## CLI check
 
