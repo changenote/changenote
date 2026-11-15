@@ -93,19 +93,23 @@ def drive(run_path, label, args, emit=True):
     record = {"command": command, "cwd": str(REPO)}
     save_json(step / "command.json", record)
     before = snapshot(fixture, step / "before")
-    stdin = b""
+    shell_command = shlex.join(command)
     if (
         "--message-file" in args
         and args[args.index("--message-file") + 1:] == ["-"]
     ):
         if sys.stdin.isatty():
             raise ValueError("pipe the Markdown message; do not open a prompt")
-        stdin = sys.stdin.buffer.read()
-        (step / "stdin.txt").write_bytes(stdin)
+        stdin_file = step / "stdin.txt"
+        stdin_file.write_bytes(sys.stdin.buffer.read())
+        record["stdin_file"] = str(stdin_file)
+        shell_command += " < " + shlex.quote(str(stdin_file))
+    record["shell_command"] = shell_command
+    save_json(step / "command.json", record)
     result = subprocess.run(
         ["script", "--quiet", "--return", "--echo", "never", "--command",
-         shlex.join(command), str(step / "terminal.txt")],
-        cwd=REPO, input=stdin, capture_output=True, check=False,
+         shell_command, str(step / "terminal.txt")],
+        cwd=REPO, input=b"", capture_output=True, check=False,
     )
     output = result.stdout.replace(b"\r\n", b"\n")
     (step / "output.txt").write_bytes(output)

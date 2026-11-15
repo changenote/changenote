@@ -60,11 +60,11 @@ Preconditions:
     --message-file "$FIXTURE/message.md"
   ```
 
-- **Stdin message.** Pipe the body through the terminal harness.
+- **Stdin message.** Pipe a body without a final newline through the harness.
   Require `.changenote/from-stdin.md` with assignment `verify-pkg: patch` and the piped body.
 
   ```bash
-  printf 'Read a piped message.\n' | \
+  printf 'Read a piped message.' | \
     uv run --script "$CONTROL" drive "$RUN" add-stdin add from-stdin \
       --patch verify-pkg --message-file -
   ```
@@ -84,5 +84,7 @@ Preconditions:
 - `--message` and `--message-file` are mutually exclusive.
 - Message-file paths are relative to the process working directory, not `--root`; use the absolute fixture path above.
 - Keep `--message-file -` last for the helper's stdin capture.
+- Piped messages need no final newline.
+  - The helper saves the exact input bytes and redirects the child from that file to avoid terminal input limits.
 - Automatic names are random, not chronological; use the printed path and saved inventory.
 - The collision must preserve the original bytes; a nonzero exit alone is not enough.

@@ -67,6 +67,8 @@ The helper supplies `--root` and returns the CLI exit code.
 Expected failures need explicit exit-code checks in the journey; do not hide unexpected failures with `|| true`.
 For commands that use stdin, pipe the message and keep `--message-file -` as the final arguments.
 All drives use a new util-linux `script` PTY with input echo disabled.
+The helper saves piped Markdown in `stdin.txt` and redirects the child command from that file.
+Message bytes do not pass through terminal input; CLI output still uses the PTY.
 
 Do not run `version`, `tag`, hidden release options, or the GitHub Release workflow.
 The helper rejects release commands and root overrides.
@@ -80,7 +82,8 @@ Evidence is stored under `.verification/cli-changenote-<unique-suffix>/` at the 
 Do not commit these ignored artifacts.
 
 - `run.json`, `source.txt`, and `build.txt` identify the project, source revision, working-tree diff, and build.
-- Each numbered step contains `command.json` with the exact command, working directory, and exit code.
+- Each numbered step contains `command.json` with the argument list, exact shell command, working directory, and exit code.
+  - For piped messages, `stdin_file` identifies the saved input used by the shell redirection.
   - `terminal.txt` is the PTY transcript with session metadata.
   - `output.txt` is the terminal output with CRLF changed to LF.
   - CLI stdout and stderr share the PTY; they are not separate streams.
@@ -132,6 +135,17 @@ Always run [control.py](scripts/control.py) with `uv run --script`; do not execu
 Its PEP 723 metadata requires Python 3.11 or later and declares no dependencies.
 Its complete interface is `launch`, `doctor RUN`, `drive RUN LABEL COMMAND ARGS...`, and `cleanup RUN`, as shown above.
 Use `uv run --script "$CONTROL" --help` for the command syntax.
+
+Run [the stdin regression tests](scripts/test_control.py) after changes to input handling:
+
+```bash
+uv run --script .agents/skills/verify-changenote-cli/scripts/test_control.py
+```
+
+The tests use the real CLI and util-linux `script`; GNU `timeout` prevents an input failure from hanging the suite.
+They check messages without a final newline, lines longer than the terminal limit, Unicode, CRLF, and terminal control bytes.
+They remove their owned scratch state and retain their proof in the named evidence directory.
+
 If a prerequisite is missing or the checkout does not build, retain the failed-run evidence and report the blocker instead of claiming verification.
 
 Use `/maintain-verification-skill` to update this skill and its feature map when user paths change.
