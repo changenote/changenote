@@ -46,6 +46,7 @@ jobs:
       - run: uv sync --locked
       - run: uv run --locked python -m unittest discover -s python/tests
       - run: uv build --out-dir dist/python-binary
+      - run: uv run --no-project python scripts/check_python_sdist.py dist/python-binary/*.tar.gz
       - run: uvx --isolated --no-index --find-links dist/python-binary changenote --help
 
   check:

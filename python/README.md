@@ -17,6 +17,7 @@ The Release workflow publishes this binary-wrapper distribution after the PyPI p
 
 ```sh
 uv build --out-dir dist/python-binary
+uv run --no-project python scripts/check_python_sdist.py dist/python-binary/*.tar.gz
 uvx --isolated --no-index --find-links dist/python-binary changenote --help
 ```
 
@@ -65,7 +66,12 @@ Supported wheels:
 - macOS x86_64 and aarch64.
 - Windows x86_64.
 
-Each wheel is installed and its CLI version is checked on its native runner. One Linux job also builds the source archive. Alpine/musl wheels and Windows ARM64 wheels are not included.
+Each wheel is installed and its CLI version is checked on its native runner.
+One Linux job builds the source archive with maturin 1.16.0, which includes the
+root license file when the Cargo manifest is in a workspace member.
+CI checks that each `License-File` in `PKG-INFO` exists in the source archive.
+Release builds run the same check before archive upload.
+Alpine/musl wheels and Windows ARM64 wheels are not included.
 
 Builds use the release commit returned by the publication Action, not the latest main tree. The preparation script from the workflow revision checks the configured version source against the saved batch and validates the local package version in `Cargo.lock`. Current releases use `crates/changenote/Cargo.toml` and need no build-only version changes. Historical releases with root `Cargo.toml` also remain read-only. Older releases configured with `VERSION` receive root Cargo package version synchronization in a disposable checkout. Dependency versions and committed release files are unchanged. Wheel metadata and the CLI version must match the validated release version.
 

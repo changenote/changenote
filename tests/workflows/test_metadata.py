@@ -104,6 +104,7 @@ class Metadata(unittest.TestCase):
             "uv sync --locked",
             "uv run --locked python -m unittest discover -s python/tests",
             "uv build --out-dir dist/python-binary",
+            "uv run --no-project python scripts/check_python_sdist.py dist/python-binary/*.tar.gz",
             "uvx --isolated --no-index --find-links dist/python-binary changenote --help",
         ):
             self.assertIn(gate, distribution)
@@ -229,6 +230,14 @@ class Metadata(unittest.TestCase):
         sdist = next(step for step in wheels["steps"] if step.get("name") == "Build source archive")
         self.assertEqual(sdist["if"], "matrix.target == 'x86_64-unknown-linux-gnu'")
         self.assertEqual(sdist["with"]["command"], "sdist")
+        self.assertEqual(sdist["with"]["maturin-version"], "v1.16.0")
+        check_sdist = next(step for step in wheels["steps"] if step.get("name") == "Check source archive")
+        self.assertEqual(check_sdist["if"], sdist["if"])
+        self.assertEqual(check_sdist["shell"], "bash")
+        self.assertEqual(check_sdist["run"],
+                         "uv run --no-project python workflow/scripts/check_python_sdist.py source/dist/*.tar.gz")
+        self.assertLess(wheels["steps"].index(sdist), wheels["steps"].index(check_sdist))
+        self.assertLess(wheels["steps"].index(check_sdist), len(wheels["steps"]) - 1)
         prepare_dist = next(step for step in wheels["steps"] if step.get("name") == "Create distribution directory")
         self.assertEqual(prepare_dist["shell"], "bash")
         self.assertEqual(prepare_dist["run"], "mkdir -p source/dist")
