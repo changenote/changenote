@@ -58,7 +58,7 @@ uv run --locked --no-sync zensical build --clean
 
 The build writes to `site/`, which Git ignores.
 To preview the site, run `uv run --locked --no-sync zensical serve`.
-The Documentation workflow builds and deploys the site on pushes to `main` or `master`.
+The Documentation workflow builds and deploys the [site](https://changenote.github.io/changenote/) on pushes to `main` or `master`.
 Set the repository's GitHub Pages source to GitHub Actions before deployment.
 
 ## Rust checks
