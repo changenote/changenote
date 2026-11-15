@@ -1,13 +1,13 @@
 [project]
 site_url = "https://changenote.github.io/changenote/"
-site_name = "Documentation"
-# site_description = "Your project description"
+site_name = "changenote"
+site_description = "Turn Markdown change notes into SemVer versions, changelogs, and release tags."
 # site_author = "Your name"
 
 # copyright = "Copyright &copy; 2026 Your name"
 
-# repo_url = "https://github.com/user/repo"
-# repo_name = "user/repo"
+repo_url = "https://github.com/changenote/changenote"
+repo_name = "changenote/changenote"
 # edit_uri = "edit/main/docs/"
 
 nav = [
@@ -20,7 +20,7 @@ nav = [
     { "Change Notes" = "notes.md" },
     { "Releases" = "releases.md" },
     { "PR Checks" = "checks.md" },
-    { "GitHub Actions" = "https://github.com/changenote/action/blob/main/docs/github-actions.md" },
+    { "GitHub Actions (external)" = "https://github.com/changenote/action/blob/main/docs/github-actions.md" },
     { "Language Guides" = [
       { "Android Apps" = "android.md" },
       { "Go Modules" = "go.md" },
@@ -52,7 +52,6 @@ features = [
   # "header.autohide",
   # "navigation.expand",
   "navigation.footer",
-  "navigation.indexes",
   "navigation.instant",
   "navigation.instant.prefetch",
   # "navigation.instant.progress",

@@ -4,23 +4,27 @@ Configure packages in `.changenote/config.json`.
 Each package has a directory and a primary version file.
 Additional version files, tag prefixes, and version groups are optional.
 
-- [Initialize from an existing version file](#initialize-from-an-existing-version-file)
-- [Package configuration](#package-configuration)
-- [Additional version files and tag prefixes](#additional-version-files-and-tag-prefixes)
-- [Default tag names](#default-tag-names)
-- [Automatic lockfile synchronization](#automatic-lockfile-synchronization)
-- [Fixed version groups](#fixed-version-groups)
-- [Linked version groups](#linked-version-groups)
-- [Pause package releases](#pause-package-releases)
-
 ## Initialize from an existing version file
 
+Choose one example for a new configuration; do not run both in the same project.
+
+### Cargo package
+
 ```sh
-changenote init --name pkg-a --version-file Cargo.toml
-changenote init --name sdk --version-file packages/sdk/package.json
+changenote init \
+  --name pkg-a \
+  --version-file Cargo.toml
 ```
 
-Use one command for a new configuration. The source path is relative to `--root`.
+### Node.js package
+
+```sh
+changenote init \
+  --name sdk \
+  --version-file packages/sdk/package.json
+```
+
+The source path is relative to `--root`.
 Its directory becomes the package directory, and its filename or extension selects the version format.
 The command reads the existing version and creates only `.changenote/config.json`.
 It does not change the source, create a second `VERSION`, or overwrite an existing configuration.

@@ -2,33 +2,41 @@
 
 Use changenote to turn Markdown change notes into versions, changelogs, and local release tags.
 This guide uses one package with a plain-text `VERSION` file.
-[Install changenote](installation.md) before you start.
 
-Run commands from your project's Git repository root.
-To select another root, use `changenote --root PATH <command>`.
+## 1. Install changenote
 
-## 1. Initialize a package
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run:
 
 ```sh
-changenote init --name pkg-a --version 0.0.0
+uv tool install changenote
+changenote --help
+```
+
+The help output confirms that the CLI is available.
+See [Installation](installation.md) for Cargo installation, `uvx`, and platform requirements.
+
+## 2. Initialize a package
+
+Run project commands from your project's Git repository root.
+To select another root, use `changenote --root PATH <command>`.
+
+```sh
+changenote init \
+  --name pkg-a \
+  --version 0.0.0
 ```
 
 This creates `.changenote/config.json` and `VERSION`.
-
-To use an existing version source instead, run this command in place of the previous command:
-
-```sh
-changenote init --name pkg-a --version-file Cargo.toml
-```
-
-Use only one initialization command.
-See [Configuration](configuration.md) for other version formats and multiple packages.
+For existing version files or multiple packages, see [Configuration](configuration.md).
 The remaining steps use the plain-text `VERSION` example.
 
-## 2. Add a change note
+## 3. Add a change note
 
 ```sh
-changenote add hello-world --package pkg-a --bump minor --message "Initial release"
+changenote add hello-world \
+  --package pkg-a \
+  --bump minor \
+  --message "Initial release"
 ```
 
 This creates `.changenote/hello-world.md`:
@@ -47,7 +55,7 @@ Documentation-only changes, test-only changes, and internal refactors without re
 Do not create empty notes as no-release markers.
 See [Change Notes](notes.md) for note format, bump selection, and changelog sections.
 
-## 3. Review the release plan
+## 4. Review the release plan
 
 ```sh
 changenote status
@@ -58,7 +66,7 @@ The plan applies the highest requested bump once for each package.
 For this example, the minor note changes `pkg-a` from `0.0.0` to `0.1.0`.
 Multiple patch notes produce one patch bump, not multiple bumps.
 
-## 4. Apply the approved release
+## 5. Apply the approved release
 
 Read [Releases](releases.md) for release outputs, safety rules, and recovery before you continue.
 Start from a clean checkout after the release is approved:
@@ -74,8 +82,12 @@ Review the changes before you commit them.
 For the plain-text `VERSION` example, commit the release outputs, then create the local tag:
 
 ```sh
-git add -- VERSION CHANGELOG.md .changenote/releases.json .changenote/hello-world.md
-git commit -m "chore(release): version packages"
+git add -- \
+  VERSION CHANGELOG.md \
+  .changenote/releases.json \
+  .changenote/hello-world.md
+git commit \
+  -m "chore(release): version packages"
 changenote tag
 ```
 
@@ -89,5 +101,6 @@ It does not push tags or publish artifacts.
 2. [Write change notes](notes.md) for release changes.
 3. [Check PR notes](checks.md) before changes merge.
 4. Set up [GitHub Actions](https://github.com/changenote/action/blob/main/docs/github-actions.md) for release PRs and publication.
+   - The Action and its guide are maintained in the separate `changenote/action` repository.
 
 For language-specific setup, see [Go Modules](go.md) or [Swift Packages and Apple Apps](swift.md).
