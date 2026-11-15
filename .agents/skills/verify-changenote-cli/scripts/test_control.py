@@ -261,6 +261,31 @@ class CleanupTests(unittest.TestCase):
             (self.evidence / "final/sha256.json").read_bytes(), inventory
         )
 
+    def test_failed_cleanup_blocks_new_drives(self):
+        with mock.patch.object(control.shutil, "rmtree", side_effect=OSError(
+            "test project removal failure"
+        )):
+            with self.assertRaisesRegex(OSError, "test project removal failure"):
+                control.cleanup(self.evidence)
+        self.assertTrue(self.project.is_dir())
+        self.assertEqual(self.owner.read_text(), str(self.evidence))
+        inventory = (self.evidence / "final/sha256.json").read_bytes()
+        entries = set(self.evidence.iterdir())
+        for args in [
+            ["add", "late", "--patch", "verify-pkg", "--message", "Late fix."],
+            ["status"],
+            ["--version"],
+        ]:
+            with self.subTest(args=args):
+                with self.assertRaisesRegex(ValueError, "cleanup has started"):
+                    control.drive(self.evidence, "late-drive", args, emit=False)
+        self.assertEqual(set(self.evidence.iterdir()), entries)
+        control.cleanup(self.evidence)
+        self.assertFalse(self.scratch.exists())
+        self.assertEqual(
+            (self.evidence / "final/sha256.json").read_bytes(), inventory
+        )
+
     def test_incomplete_snapshot_is_retained(self):
         partial = self.evidence / "final/files"
         partial.mkdir(parents=True)

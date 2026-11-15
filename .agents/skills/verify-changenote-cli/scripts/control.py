@@ -79,6 +79,8 @@ def snapshot(fixture, destination):
 def drive(run_path, label, args, emit=True):
     """Run one allowlisted user command in a fresh util-linux script PTY."""
     run, scratch = load_run(run_path)
+    if (run / "final").exists():
+        raise ValueError("cleanup has started; launch a new run")
     if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", label):
         raise ValueError("use a lowercase kebab-case evidence label")
     if not args or args[0] not in ALLOWED:

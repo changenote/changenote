@@ -126,6 +126,8 @@ test ! -e "$FIXTURE"
 
 Cleanup checks the ownership marker, preserves a final file snapshot, and removes only that run's scratch directory.
 It publishes the final snapshot with an atomic directory rename and reuses a completed snapshot on retry.
+After that snapshot is published, the run accepts cleanup retries only.
+The helper rejects further CLI drives; start a new run for more verification.
 Incomplete snapshot attempts remain in separate `.final-*` directories under the evidence path.
 It removes project data before the ownership marker and records the final removal phase before it removes that marker.
 A retry without the marker can remove only the recorded, empty scratch directory.
