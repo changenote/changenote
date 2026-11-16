@@ -189,15 +189,23 @@ For an authorized version operation:
 3. Inspect the generated diff and confirm that it contains only the intended release changes.
 4. Run `uvx changenote status` again and confirm that the applied notes are no longer pending.
 
-`version` updates version files, prepends changelog entries, saves the latest release batch, and removes consumed notes.
-With no pending notes, it changes nothing and preserves the saved batch.
+`version` updates version files, prepends changelog entries, and removes consumed notes without creating `.changenote/releases.json`.
+The first nonempty release with the new CLI removes an existing regular legacy batch file as part of the same recovery transaction.
+Commit that deletion with the other release outputs.
+With no pending notes, no files change, including any legacy batch file.
 It updates configured version files and synchronizes supported existing lockfiles; it does not update internal dependency ranges.
 Follow the repository's documented package-manager and offline-cache requirements.
 If writes fail, stop and inspect partial changes before retrying; do not automatically discard unrelated work.
 
-For an authorized tag operation, require a clean working tree and committed release data, then run `uvx changenote tag`.
-A single configured package uses `v<version>`; two or more configured packages use `changenote/<package>@v<version>`.
-Tag format depends on the number of configured packages, not the number changed.
+For an authorized tag operation, require a clean working tree, complete Git history, and notes committed before the release, then run `uvx changenote tag`.
+The command derives the newest release from consumed notes and matching historical version sources.
+It targets that release commit, not a later unrelated `HEAD`.
+Note-only retractions and renames are not release candidates; file-free candidates must also change a configured version file.
+Malformed newest candidates fail instead of selecting older releases.
+Do not infer release membership from missing tags.
+By default, one configured package uses `v<version>`; two or more use `changenote/<package>@v<version>`.
+Default tag format depends on the number of historically configured packages, not the number changed.
+An explicit package `tag_prefix` overrides the default; use the release commit's configuration, not later settings.
 The command creates local annotated tags only.
 Do not move existing tags, push, create GitHub Releases, or publish artifacts without separate authorization.
 
@@ -205,7 +213,7 @@ Do not move existing tags, push, create GitHub Releases, or publish artifacts wi
 
 ### Inspect the Workflow
 
-- Read `.github/workflows/`, `.changenote/config.json`, and saved release state.
+- Read `.github/workflows/`, `.changenote/config.json`, release history, and any legacy batch data.
 - Identify the selected base branch, existing Action pins and CLI versions, package-manager requirements, and publication policy.
 - Use the [GitHub Actions guide](https://github.com/changenote/action/blob/main/docs/github-actions.md) for setup and operations.
 - Read documentation and Action metadata at the selected revision before changing inputs; `main` can differ from a pinned revision.
@@ -291,11 +299,14 @@ jobs:
   - Pin other external Actions to reviewed full SHAs as well.
   - If a reviewed SHA is unavailable, leave a clearly marked template and report that it is not ready to run.
 - Select compatible CLI and Action versions; their release versions are independent.
+  - Upgrade the Action before enabling file-free CLI releases.
+  - Replace `.changenote/releases.json` readers with verified `release-commit` and `releases` outputs.
+  - Historical metadata-only batches remain supported; note-bearing historical batches keep their completed-publication-only restriction.
   - Root installs a prebuilt CLI wheel from PyPI with uv outside the consumer checkout.
   - `version` defaults to `latest`; pinning the Action SHA does not pin the CLI version.
   - For repeatable runs, use the same exact stable CLI version for PR generation and release replay.
   - Exact versions require a leading `v`; bare versions, ranges, Git revisions, URLs, and prereleases are rejected.
-  - A reused `cli-path` must come from trusted same-job `/setup` output, never contributor data or another job.
+  - A reused `cli-path` must identify a trusted same-job executable, such as `/setup` output or an explicitly trusted source build, never contributor data or another job.
   - An exact `version` must match the reused executable; `latest` with a trusted path validates its stable version without resolving PyPI again.
   - Older revisions can require caller installation or a fixed CLI source pin; follow their metadata instead of assuming current inputs exist.
   - Never build the trusted CLI from contributor code.
@@ -319,12 +330,14 @@ jobs:
   - Root defaults to `prepare: 'true'` for every invocation, including PR-only and script calls.
   - Set `prepare: 'false'` after caller-owned preparation; this does not skip required CLI or router setup.
   - Root prepares supported lockfile tools and caches, not arbitrary build dependencies.
-  - Saved-batch preparation includes only consumed notes, not unrelated notes retained for the next release.
+  - Historical-release preparation includes only consumed notes, not unrelated notes retained for the next release.
 
 ### Root Project Scripts
 
 Keep tests, builds, and registry publication in `publish-script` when its verified-merge execution satisfies the requested workflow.
-Root scripts require a new batch-changing first-parent commit and exactly one associated merged managed PR in the triggering push range.
+Root scripts require a new first-parent release candidate and exactly one associated merged managed PR in the triggering push range.
+New candidates consume eligible notes and change a configured version file; historical candidates can change a saved batch.
+Routing alone does not authorize execution: the Action must reconstruct and verify the complete release tree first.
 Verify the reserved same-repository head branch, selected base, body marker, and matching merge commit; titles and commit messages are not authority.
 The execution order is `publish-script`, enabled built-in tags and Releases, then `release-script`; a failure prevents later steps without undoing earlier writes.
 Scripts do not enable built-in publication; keep both controls false when a script owns tags or Releases.
@@ -364,7 +377,7 @@ The former `/release`, `/select`, and `/preview` paths are removed, not compatib
 Standalone operations install the selected CLI by default; `/setup` is optional for same-job reuse, not a mandatory first step.
 Standalone `/manage-pr`, `/inspect`, and `/publish` do not prepare project tools implicitly.
 Add `/prepare` only when the operation needs supported tools or caches that caller-owned setup has not already prepared.
-`/prepare` uses `operation` only as an environment scope: `manage-pr` for pending notes, `inspect` or `publish` for the saved batch, and `auto` for both.
+`/prepare` uses `operation` only as an environment scope: `manage-pr` for pending notes, `inspect` or `publish` for the committed release, and `auto` for both.
 The `publish` preparation scope requires the selected `expected-release-commit`; other scopes reject that guard.
 Preparation does not execute the named release operation.
 Use the same CLI and project tool versions across composed jobs; do not transfer executable paths between jobs.

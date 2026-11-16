@@ -33,6 +33,30 @@ fn disabled_output_still_supports_local_tags_in_a_fixture_repository() {
             .success()
     );
     changenote::add(root, "fix", vec!["pkg".into()], Bump::Patch, "Fix").unwrap();
+    assert!(
+        Command::new("git")
+            .current_dir(root)
+            .args(["add", "--", "."])
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(
+        Command::new("git")
+            .current_dir(root)
+            .args([
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.com",
+                "commit",
+                "-qm",
+                "parent"
+            ])
+            .status()
+            .unwrap()
+            .success()
+    );
     changenote::version(root).unwrap();
     assert!(
         Command::new("git")

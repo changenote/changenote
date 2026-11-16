@@ -112,12 +112,7 @@ fn public_layout_signatures_and_serialization_remain_compatible() {
         format!("{expected}\n")
     );
     changenote::version(dir.path()).unwrap();
-    let mut metadata: Value = serde_json::from_str(&expected).unwrap();
-    metadata[0].as_object_mut().unwrap().remove("notes");
-    assert_eq!(
-        fs::read_to_string(dir.path().join(".changenote/releases.json")).unwrap(),
-        format!("{}\n", serde_json::to_string_pretty(&metadata).unwrap())
-    );
+    assert!(!dir.path().join(".changenote/releases.json").exists());
     let single = tempfile::tempdir().unwrap();
     changenote::init(single.path(), "a", Version::new(1, 0, 0)).unwrap();
     changenote::add(single.path(), "one", vec!["a".into()], Bump::Patch, "Fix").unwrap();
@@ -210,6 +205,9 @@ fn fixed_groups_use_highest_baseline_and_bump_with_direct_provenance() {
     let before = snapshot(root);
     assert!(version_with_legacy_output(root, true).is_err());
     assert_eq!(snapshot(root), before);
+    git(root, &["init", "-q"]);
+    git(root, &["add", "--", "."]);
+    git(root, &["commit", "-qm", "parent"]);
     changenote::version(root).unwrap();
     assert_eq!(
         fs::read_to_string(root.join("d/CHANGELOG.md")).unwrap(),
@@ -223,7 +221,6 @@ fn fixed_groups_use_highest_baseline_and_bump_with_direct_provenance() {
     let before = snapshot(root);
     assert!(changenote::version(root).unwrap().is_empty());
     assert_eq!(snapshot(root), before);
-    git(root, &["init", "-q"]);
     git(root, &["add", "--", "."]);
     git(root, &["commit", "-qm", "fixture"]);
     let out = Command::new(env!("CARGO_BIN_EXE_changenote"))

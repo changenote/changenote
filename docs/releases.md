@@ -22,14 +22,15 @@ A `version` run with pending releases:
 1. Updates configured primary and additional version files.
 2. Refreshes supported existing lockfiles.
 3. Adds entries to each package's `CHANGELOG.md`, unless output is disabled.
-4. Saves the latest release batch to `.changenote/releases.json`.
+4. Removes an existing regular legacy `.changenote/releases.json` file.
 5. Removes consumed notes.
 
-Saved batches contain only `package`, `old_version`, `version`, `bump`, and `tag`.
-With default output, summaries remain in package changelogs, not saved `notes` fields.
+New releases do not create a release state file.
+The Git release commit, consumed notes in its parent, and configured version sources identify the release.
+With default output, summaries remain in package changelogs.
 Pending `status` and `version` command output still include notes.
 
-A run without pending releases does not change files or clear the saved batch.
+A run without pending releases changes no files, including any legacy batch file.
 Paused notes remain pending.
 
 For lockfile tools, offline cache requirements, and supported formats, see [automatic lockfile synchronization](lockfiles.md).
@@ -49,7 +50,7 @@ Keep changelog output enabled for built-in GitHub publication.
 Disabling output does not preserve consumed summaries elsewhere.
 
 Optional [commit source links](changelogs.md#automatic-commit-source-links) use the checked-out note history and `changelog.source_repository`.
-Source checks for all consumed notes finish before version files, lockfiles, changelogs, or saved batches change.
+Source checks for all consumed notes finish before version files, lockfiles, changelogs, or legacy batch files change.
 Missing source evidence is an error for versioning, not permission to use the current branch tip.
 Publication reconstructs links from the selected historical parent and compares the complete release tree.
 A later configuration or remote change does not replace the historical repository URL.
@@ -77,8 +78,18 @@ Extraction and changelog insertion use these rules:
 ## Local tags
 
 Commit and review the release outputs before tagging.
-`tag` requires a clean Git working tree and committed release data.
-It creates local annotated tags for the saved batch; it does not push them or publish artifacts.
+`tag` requires a clean Git working tree and complete history.
+Commit notes before generating the release so its parent contains the consumed inputs.
+The command reconstructs the latest release plan from consumed notes and checks committed version sources.
+It creates local annotated tags at that release commit, not a later unrelated `HEAD`.
+It does not push tags, publish artifacts, or run package managers.
+
+Historical configuration selects package paths and tag prefixes.
+Fixed-group members are included by the plan, not by checking for missing tags.
+A note-only retraction or rename is not a release candidate.
+A file-free candidate must also change a configured primary or additional version file.
+A malformed newest candidate stops tagging instead of falling back to an older release.
+Shallow history and releases without verifiable parent inputs are rejected.
 
 ```sh
 changenote tag
@@ -93,7 +104,24 @@ git push origin refs/tags/v0.1.0
 ```
 
 See [default tag names](configuration.md#default-tag-names) and [custom tag prefixes](configuration.md#additional-version-files-and-tag-prefixes).
-Do not edit committed release batches or move published tags.
+Do not edit committed release outputs or move published tags.
+
+## File-free release migration
+
+Upgrade to a compatible Action before enabling the file-free CLI writer.
+Replace scripts that read `.changenote/releases.json` with verified Action `release-commit` and `releases` outputs.
+Commit the legacy file deletion with the first nonempty release after upgrade; a no-op run does not remove it.
+Ordinary version calculation still needs no Git history when source links are disabled.
+Tagging and Action publication need historical release inputs.
+
+Historical metadata-only batches remain verifiable and publishable with compatible tooling.
+Older note-bearing batches retain their completed-publication-only Action restriction.
+Complete their missing publication with matching old tooling; do not convert committed batches by editing them.
+After committing a file-free release, retain compatible new tooling for inspection and retries.
+Old tooling alone cannot recover that release by reading a missing file.
+Never invent a replacement batch, rewrite a release commit, or move an existing tag.
+
+See [maintainer rollout and recovery](maintainer-releases.md#file-free-release-rollout) for this repository's activation limits.
 
 ## Local diagnostics
 
@@ -118,7 +146,7 @@ Rust callers can use `doctor()` and its structured report types.
 ## Release-write recovery
 
 Before writes, `version` saves the original bytes of all known release outputs and consumed notes in memory.
-Absent changelogs or batch files are also recorded.
+Absent changelogs and the legacy batch migration path are also recorded.
 If synchronization, a later write, or note deletion fails, the CLI attempts every restoration.
 It recreates removed notes and removes newly created output files. It does not remove unrelated files or directories.
 Symlink files and parent directories are rejected. Unsafe replacement paths are not followed during restoration.
@@ -143,7 +171,7 @@ Use a clean checkout, review the result, and do not run concurrent local version
   - `add` never overwrites a note.
 - Only top-level `.changenote/*.md` files are read.
   - Hidden files and `README.md`, `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` are ignored.
-- `tag` requires a clean Git working tree and committed release data.
+- `tag` requires a clean Git working tree, complete history, and committed parent notes.
   - It creates local tags only; it does not push, publish artifacts, or run arbitrary commands.
 - Input validation and output preparation happen before version writes.
   - Ordinary failures trigger best-effort recovery of known release files.

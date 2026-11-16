@@ -67,7 +67,7 @@ Linked membership does not provide direct PR coverage.
 Source paths explain the group baseline; they are not additional direct notes.
 Rust callers can use `status_with_group_causes()` and `GroupedRelease`.
 Existing public result layouts and API signatures remain supported; older detailed views omit linked causes.
-Default status JSON and metadata-only saved batches are unchanged.
+Default status JSON is unchanged.
 Upgrade CLI and Action pins together. Dependency propagation is not implemented.
 
 ## Pause package releases
@@ -79,7 +79,7 @@ Pause every member of a fixed group or none.
 A paused linked member stays unchanged but still supplies its original version to the group baseline.
 
 All configuration, notes, and current versions remain validated. PR checks still require direct notes for paused packages.
-A plan with only paused notes changes no files and preserves the saved batch.
+A plan with only paused notes changes no files, including any legacy batch file.
 An active release consumes only its selected notes and updates only its selected outputs.
 A shared lockfile can change for another active package.
 Ignore affects pending planning only; it never suppresses publication of an already saved historical batch.

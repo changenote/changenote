@@ -23,7 +23,7 @@ Use `changenote --version` for the installed CLI's build version, not a configur
 | [`doctor`](#doctor) | Diagnose local prerequisites | Read-only |
 | [`version`](#version) | Apply an approved plan | Changes release files |
 | [`release-notes`](#release-notes) | Read a changelog entry | Read-only |
-| [`tag`](#tag) | Tag the saved batch | Creates local tags |
+| [`tag`](#tag) | Tag the latest committed release | Creates local tags |
 | [`skill`](#skill) | Print the agent skill | Read-only |
 | [`completion`](#completion) | Print shell completion | Read-only |
 
@@ -133,8 +133,8 @@ changenote version
 git diff
 ```
 
-The command updates configured version files and supported existing lockfiles, writes enabled changelogs, saves the batch, and consumes released notes.
-With no pending releases, it changes no files and retains the saved batch.
+The command updates configured version files and supported existing lockfiles, writes enabled changelogs, and consumes released notes without creating a batch file.
+With no pending releases, it changes no files, including any legacy batch file.
 It does not commit, tag, push, or publish.
 Review [Release behavior](releases.md), including recovery limits, before use.
 
@@ -157,8 +157,9 @@ After committing and reviewing the approved release outputs:
 changenote tag
 ```
 
-The command creates local annotated tags for the saved batch at the current commit.
-It requires a clean working tree and matching release versions.
+The command creates local annotated tags at the latest validated release commit, not a later unrelated `HEAD`.
+It requires a clean working tree, complete Git history, and committed notes before the release.
+Membership comes from consumed notes and matching historical version changes, not missing tags.
 It does not push tags or publish artifacts.
 See [Local tags](releases.md#local-tags) for publication boundaries and [Tag names](configuration.md#default-tag-names) for naming rules.
 

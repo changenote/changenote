@@ -105,9 +105,7 @@ fn configured_sections_order_merge_types_and_keep_bumps_independent() {
             .to_owned()
             + "\n"
     );
-    let saved: Value =
-        serde_json::from_slice(&fs::read(root.join(".changenote/releases.json")).unwrap()).unwrap();
-    assert_eq!(saved[0].as_object().unwrap().len(), 5);
+    assert!(!root.join(".changenote/releases.json").exists());
     assert!(changenote::status(root).unwrap().is_empty());
 }
 

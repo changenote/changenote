@@ -140,17 +140,14 @@ fn feature_merges_use_first_parent_changes_and_release_replay_is_identical() {
         let parent = p.commit("later unrelated commit");
         changenote::version(&p.root).unwrap();
         let changelog = fs::read(p.root.join("CHANGELOG.md")).unwrap();
-        let batch = fs::read(p.root.join(".changenote/releases.json")).unwrap();
+        assert!(!p.root.join(".changenote/releases.json").exists());
         let tree = p.commit("release");
         let expected_tree = p.git(&["rev-parse", &format!("{tree}^{{tree}}")]);
         p.git(&["reset", "--hard", &parent]);
         assert_eq!(p.rendered(), expected);
         changenote::version(&p.root).unwrap();
         assert_eq!(fs::read(p.root.join("CHANGELOG.md")).unwrap(), changelog);
-        assert_eq!(
-            fs::read(p.root.join(".changenote/releases.json")).unwrap(),
-            batch
-        );
+        assert!(!p.root.join(".changenote/releases.json").exists());
         p.git(&["add", "--", "."]);
         assert_eq!(p.git(&["write-tree"]), expected_tree);
     }
@@ -196,10 +193,7 @@ fn templates_sections_code_and_saved_data_preserve_their_contracts() {
     assert_eq!(body.matches("/commit/").count(), 4);
     assert!(body.contains("  {package} $(touch forbidden)"));
     assert!(!p.root.join("forbidden").exists());
-    let saved: Value =
-        serde_json::from_slice(&fs::read(p.root.join(".changenote/releases.json")).unwrap())
-            .unwrap();
-    assert_eq!(saved[0].as_object().unwrap().len(), 5);
+    assert!(!p.root.join(".changenote/releases.json").exists());
 }
 
 #[test]

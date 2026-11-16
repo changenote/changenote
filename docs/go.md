@@ -89,20 +89,21 @@ git diff -- .changenote VERSION CHANGELOG.md sdk/v2/VERSION sdk/v2/CHANGELOG.md
 git status --short
 ```
 
-Review both version files, both changelogs, the saved batch in `.changenote/releases.json`, and the deleted note. `go.mod`, `go.sum`, `go.work`, source files, and dependency requirements must remain unchanged by changenote. It does not run `go mod tidy`, install dependencies, or download modules.
+Review both version files, both changelogs, and the deleted note. `go.mod`, `go.sum`, `go.work`, source files, and dependency requirements must remain unchanged by changenote. It does not run `go mod tidy`, install dependencies, or download modules.
 
-Stage only release outputs and the consumed note, then commit:
+Stage the release outputs, the consumed note, and any tracked legacy batch deletion, then commit:
 
 ```sh
-git add -- .changenote/releases.json .changenote/fix-api.md VERSION CHANGELOG.md sdk/v2/VERSION sdk/v2/CHANGELOG.md
+git add -- .changenote/fix-api.md VERSION CHANGELOG.md sdk/v2/VERSION sdk/v2/CHANGELOG.md
+git add -u -- .changenote
 git commit -m "chore(release): version Go modules"
 changenote tag
 ```
 
-With a clean working tree, `tag` creates local annotated tags `v1.2.1` and `sdk/v2.2.1`. It does not push. Push only after separate publication approval and repository review. Never move an existing published tag; correct release errors with a new version. Do not edit committed saved batches.
+With a clean working tree, `tag` creates local annotated tags `v1.2.1` and `sdk/v2.2.1`. It does not push. Push only after separate publication approval and repository review. Never move an existing published tag; correct release errors with a new version. Do not edit committed release outputs.
 
 ## Actions and limits
 
 The existing Release PR, preview, and publication Actions use these configured version files and literal tag prefixes. Use compatible CLI and Action pins, and follow the permissions and clean-checkout rules in the [GitHub Actions guide](https://github.com/changenote/action/blob/main/docs/github-actions-reference.md#requirements). No Go-specific Action setting is required.
 
-Release PR staging includes configured version files, package changelogs, saved batch data, and consumed notes. Publication reconstructs the complete release tree. It does not publish to a Go proxy or update internal dependency requirements. Local fixtures verify staging and reconstruction with local Git repositories and a GitHub mock; they do not verify hosted permissions, remote module fetching, or proxy indexing.
+Release PR staging includes configured version files, package changelogs and consumed notes, plus any legacy batch deletion. Publication reconstructs the complete release tree. It does not publish to a Go proxy or update internal dependency requirements. Local fixtures verify staging and reconstruction with local Git repositories and a GitHub mock; they do not verify hosted permissions, remote module fetching, or proxy indexing.

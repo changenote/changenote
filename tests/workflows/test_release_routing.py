@@ -27,6 +27,13 @@ class ReleaseRouting(unittest.TestCase):
         self.event = {"before": BEFORE, "after": AFTER, "forced": False, "deleted": False}
         self.history = [AFTER, RELEASE, BEFORE]
         self.changed = {RELEASE}
+        self.deleted = []
+        self.deleted_after = []
+        self.version_changes = {RELEASE}
+        self.config = {"packages": {"changenote": {
+            "path": ".", "version_file": "VERSION", "version_outputs": ["meta/RELEASE"],
+        }}}
+        self.enterContext(patch.object(routing.subprocess, "check_output", side_effect=self.read_deleted))
         self.entry = f"100644 blob {'d' * 40}\t{routing.BATCH}"
         self.batch = [{"package": "changenote", "version": "1.2.3", "tag": "v1.2.3"}]
         self.pull = {
@@ -43,7 +50,20 @@ class ReleaseRouting(unittest.TestCase):
         self.pages = [[self.pull]]
         self.command = self.enterContext(patch.object(routing, "command", side_effect=self.read_command))
 
+    def read_deleted(self, args):
+        if args[:2] == ["git", "--literal-pathspecs"]:
+            self.assertEqual(args[:5], ["git", "--literal-pathspecs", "diff", "--name-only", "-z"])
+            self.assertEqual(args[5], args[6] + "^")
+            self.assertEqual(args[7:], ["--", "VERSION", "meta/RELEASE"])
+            return b"VERSION\0" if args[6] in self.version_changes else b""
+        self.assertEqual(args[:6], ["git", "diff", "--no-renames", "--diff-filter=D", "--name-only", "-z"])
+        paths = self.deleted_after if args[7] == AFTER else self.deleted
+        return b"\0".join(paths) if args[7] in (RELEASE, AFTER) else b""
+
     def read_command(self, *args):
+        if args[:3] == ("git", "rev-list", "--parents"):
+            commit = args[-1]
+            return commit + " " + commit + "^"
         if args[:3] == ("git", "cat-file", "-e"):
             self.assertIn(args[3], (BEFORE + "^{commit}", AFTER + "^{commit}"))
             return ""
@@ -54,8 +74,11 @@ class ReleaseRouting(unittest.TestCase):
             self.assertEqual(args, ("git", "diff", "--name-only", commit + "^", commit, "--", routing.BATCH))
             return routing.BATCH if commit in self.changed else ""
         if args[:2] == ("git", "ls-tree"):
-            self.assertEqual(args, ("git", "ls-tree", RELEASE, "--", routing.BATCH))
+            self.assertTrue(args[2] in self.changed or (args[2] == RELEASE and self.deleted))
+            self.assertEqual(args[3:], ("--", routing.BATCH))
             return self.entry
+        if args[:2] == ("git", "show") and args[2].endswith("^:.changenote/config.json"):
+            return json.dumps(self.config)
         if args == ("git", "show", RELEASE + ":" + routing.BATCH):
             return json.dumps(self.batch)
         if args == ("gh", "api", "--paginate", "--slurp", f"repos/{REPOSITORY}/commits/{RELEASE}/pulls?per_page=100"):
@@ -71,6 +94,46 @@ class ReleaseRouting(unittest.TestCase):
         })
         # Only read-only Git and GitHub commands are permitted by the mock.
         self.assertEqual(self.command.call_args.args[0], "gh")
+
+    def test_file_free_release_still_requires_the_managed_pr(self):
+        self.entry = ""
+        self.changed.clear()
+        self.deleted = [b".changenote/fix-\xff.md"]
+        self.assertEqual(self.classify()["release-commit"], RELEASE)
+        self.pages = [[]]
+        with self.assertRaises(ValueError):
+            self.classify()
+
+    def test_later_note_only_deletion_does_not_hide_the_release(self):
+        self.deleted_after = [b".changenote/retracted.md"]
+        self.assertEqual(self.classify()["release-commit"], RELEASE)
+
+    def test_file_free_release_requires_a_version_source_change(self):
+        self.changed.clear()
+        self.entry = ""
+        self.deleted = [b".changenote/retracted.md"]
+        self.version_changes.clear()
+        self.assertEqual(self.classify()["publish"], "false")
+        self.assertFalse(any(call.args[0] == "gh" for call in self.command.call_args_list))
+
+    def test_version_source_read_failure_does_not_fall_back(self):
+        self.deleted_after = [b".changenote/retracted.md"]
+        with patch.object(routing.subprocess, "check_output", side_effect=subprocess.CalledProcessError(1, "git")):
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.classify()
+        self.assertFalse(any(call.args[0] == "gh" for call in self.command.call_args_list))
+
+    def test_ignored_and_nested_notes_do_not_authorize_publication(self):
+        self.changed.clear()
+        self.deleted = [b".changenote/README.md", b".changenote/.hidden.md", b".changenote/nested/a.md"]
+        self.assertEqual(self.classify()["publish"], "false")
+
+    def test_invalid_newest_candidate_never_falls_back(self):
+        self.changed.add(AFTER)
+        self.entry = ""
+        with self.assertRaises(ValueError):
+            self.classify()
+        self.assertFalse(any(call.args[0] == "gh" for call in self.command.call_args_list))
 
     def test_previous_managed_branch_remains_valid_for_pinned_actions(self):
         self.pull["head"]["ref"] = "narumi/chore/changenote-release-main"
@@ -141,7 +204,7 @@ class ReleaseRouting(unittest.TestCase):
         for entry in ("", "120000 blob abc\t" + routing.BATCH, "100755 blob abc\t" + routing.BATCH):
             with self.subTest(entry=entry):
                 self.entry = entry
-                with self.assertRaisesRegex(ValueError, "regular file"):
+                with self.assertRaisesRegex(ValueError, "regular file|removed without"):
                     self.classify()
 
     def test_invalid_batch_is_denied_before_api_calls(self):

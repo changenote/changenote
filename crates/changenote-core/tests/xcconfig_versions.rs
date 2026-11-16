@@ -1,7 +1,7 @@
 use changenote::init_with_version_file;
 use changenote_core as changenote;
 use semver::Version;
-use serde_json::{Value, json};
+use serde_json::json;
 use std::fs;
 use std::path::Path;
 use tempfile::TempDir;
@@ -62,11 +62,9 @@ fn updates_only_the_marketing_version_token() {
         expected.replace_range(start..start + "1.2.3".len(), "1.3.0");
         assert_eq!(read(root, "Configuration/Version.xcconfig"), expected);
         assert!(!root.join(".changenote/change.md").exists());
-        let batch = read(root, ".changenote/releases.json");
-        let saved: Value = serde_json::from_str(&batch).unwrap();
-        assert_eq!(saved[0].as_object().unwrap().len(), 5);
+        assert!(!root.join(".changenote/releases.json").exists());
         assert!(changenote::version(root).unwrap().is_empty());
-        assert_eq!(read(root, ".changenote/releases.json"), batch);
+        assert!(!root.join(".changenote/releases.json").exists());
     }
 }
 

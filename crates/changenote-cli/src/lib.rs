@@ -120,7 +120,7 @@ enum Commands {
         #[arg(long)]
         version: Version,
     },
-    /// Create local annotated tags for the committed release plan.
+    /// Tag the latest committed release locally; requires complete Git history.
     Tag,
     /// Print the bundled agent skill to stdout without reading project configuration.
     Skill,

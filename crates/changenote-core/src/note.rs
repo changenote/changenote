@@ -70,6 +70,15 @@ fn parse_note_data(content: &str) -> Result<NoteData> {
     })
 }
 
+pub(crate) fn is_note_name(name: &std::ffi::OsStr) -> bool {
+    let text = name.to_string_lossy();
+    Path::new(name).extension().is_some_and(|e| e == "md")
+        && !text.starts_with('.')
+        && !["README.md", "AGENTS.md", "CLAUDE.md", "GEMINI.md"]
+            .iter()
+            .any(|ignored| text.eq_ignore_ascii_case(ignored))
+}
+
 pub(crate) fn notes(root: &Path, config: &ReleaseConfig) -> Result<Vec<(PathBuf, NoteData)>> {
     use anyhow::Context;
 
@@ -80,13 +89,7 @@ pub(crate) fn notes(root: &Path, config: &ReleaseConfig) -> Result<Vec<(PathBuf,
     paths.sort();
     let mut result = Vec::new();
     for path in paths {
-        let name = path.file_name().unwrap().to_string_lossy();
-        if path.extension().is_none_or(|e| e != "md")
-            || name.starts_with('.')
-            || ["README.md", "AGENTS.md", "CLAUDE.md", "GEMINI.md"]
-                .iter()
-                .any(|n| name.eq_ignore_ascii_case(n))
-        {
+        if !is_note_name(path.file_name().unwrap()) {
             continue;
         }
         ensure!(

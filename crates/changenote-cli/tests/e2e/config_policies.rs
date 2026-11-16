@@ -141,9 +141,7 @@ fn linked_baseline_releases_only_active_members_and_preserves_public_views() {
         fs::read_to_string(root.join("b/SECOND")).unwrap(),
         "2.4.9\n"
     );
-    let batch: Value =
-        serde_json::from_slice(&fs::read(root.join(".changenote/releases.json")).unwrap()).unwrap();
-    assert_eq!(batch[0].as_object().unwrap().len(), 5);
+    assert!(!root.join(".changenote/releases.json").exists());
     assert!(changenote::status(root).unwrap().is_empty());
 }
 

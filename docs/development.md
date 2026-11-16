@@ -227,7 +227,7 @@ CI runs Rust format checks, lint checks, and tests, plus Python wrapper tests, b
 
 ## Repository release workflow
 
-The Release workflow manages version PRs and publishes approved saved batches through the separate Action repository.
+The Release workflow manages version PRs and publishes approved committed releases through the separate Action repository.
 See [Repository release workflow](maintainer-releases.md#repository-release-workflow) for pins and operation boundaries.
 
 ### Routing and verification

@@ -1,6 +1,6 @@
 //! All six policies in one mixed-language release, without language runtimes.
 use changenote::{Bump, Coverage, add_with_bumps, check_with_coverage};
-use serde_json::{Value, json};
+use serde_json::json;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -174,17 +174,7 @@ fn all_policies_preserve_mixed_sources_and_pause_notes_without_external_tools() 
         );
         assert!(!root.join(".changenote/active.md").exists());
         assert!(changenote::status(root).unwrap().is_empty());
-        let batch: Value =
-            serde_json::from_slice(&fs::read(root.join(".changenote/releases.json")).unwrap())
-                .unwrap();
-        assert_eq!(batch.as_array().unwrap().len(), 4);
-        assert!(
-            batch
-                .as_array()
-                .unwrap()
-                .iter()
-                .all(|r| r.as_object().unwrap().len() == 5)
-        );
+        assert!(!root.join(".changenote/releases.json").exists());
         assert_eq!(root.join("rust/CHANGELOG.md").exists(), enabled);
         if enabled {
             let body = changenote::release_notes(root, "rust", &"3.0.1".parse().unwrap()).unwrap();

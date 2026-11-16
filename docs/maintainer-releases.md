@@ -12,7 +12,8 @@ Python has no independent version file or bump.
 Its manifest uses a dynamic version from `crates/changenote/Cargo.toml`, so Python wheel metadata and the included Rust CLI version match.
 
 The `.changenote` package path stays `.` with version file `crates/changenote/Cargo.toml`; this keeps the root changelog and repository-wide note coverage.
-The crates.io and PyPI jobs validate that manifest against the saved release batch and check the local package version in root `Cargo.lock`.
+The crates.io and PyPI jobs validate the checkout SHA and manifest against verified Action `release-commit` and `releases` outputs, then check the local package version in root `Cargo.lock`.
+The helper needs no parent history or saved batch file, so shallow release-build checkouts remain supported.
 
 Historical releases with a root Cargo package remain supported.
 Older releases configured with `VERSION` receive build-only Cargo version synchronization in a disposable checkout.
@@ -28,7 +29,9 @@ The Action repository split is complete. The reviewed Action revision is recorde
 Workflows no longer use self-repository Action references or local `scripts/action/` helpers.
 Publication still selects the release from the remote base branch.
 The CLI and Action have independent release versions and commit SHAs.
-The Action pins a compatible CLI revision; a CLI release does not automatically update that pin.
+These jobs pass their trusted source-built CLI through `cli-path` explicitly.
+Putting it on `PATH` alone does not override the Action's default PyPI installation.
+Consumer Action pins and CLI versions remain independent.
 Do not use an unpinned branch or reuse the old repository SHA with the new Action path.
 See the [migration procedure](https://github.com/changenote/action/blob/main/docs/migration.md).
 
@@ -37,16 +40,16 @@ See the [migration procedure](https://github.com/changenote/action/blob/main/doc
 The repository's `.github/workflows/release.yml` only manages the Release PR on ordinary pushes to `main`, even when an older release batch exists.
 Automatic publication requires:
 
-- A new batch-changing first-parent commit in the push range.
+- A new first-parent release candidate in the push range: consumed eligible notes with a configured version-file change, or a historical saved-batch change.
 - Exactly one associated merged managed PR with all these properties:
     - The reserved head branch: `changenote-release/main`, or the previous `narumi/chore/changenote-release-main` name for older pinned Actions.
     - The repository's `main` base and the managed body marker.
-    - A merge commit SHA that matches the batch commit.
+    - A merge commit SHA that matches the candidate release commit.
 
 PR titles and commit messages do not authorize publication.
 Force pushes, missing history, invalid batches, ambiguous associations, and API errors stop routing without authorizing publication.
 
-Before publication, the workflow previews and validates the latest remote batch.
+Before publication, `/inspect` reconstructs and validates the latest remote release tree.
 Automatic runs require that batch to match the routed commit; publication checks the selection again after its own fetch and before any remote writes.
 If a newer release has replaced it, the run fails and requires an explicit retry.
 Multiple releases in one push still select only the latest batch.
@@ -68,7 +71,7 @@ Cancellation or failed GitHub publication prevents registry uploads. crates.io p
 The default manual operation, `manage-pr`, only manages the Release PR.
 Run **Release** manually on `main` with `operation=retry-publication` to retry a partial failure.
 Do not merge another Release PR until the current batch is fully published: discovery covers only the latest batch.
-The Action uses the saved release commit even after unrelated commits.
+The Action uses the verified release commit even after unrelated commits.
 History rewrites or manual batch edits require manual inspection.
 Never move tags automatically.
 
@@ -84,7 +87,7 @@ Inspect registry state and resolve conflicts separately; never replace published
 
 The CLI workflow builds the CLI instead of installing it and does not push version commits directly to `main`.
 Registry publication stays in this repository. The crates.io job uses `scripts/publish-crate.py`; it is not a shared Action helper.
-The Action repository's `/release` entry point instead installs its separate trusted CLI pin.
+Consumer Actions install their selected trusted CLI by default unless an explicit trusted same-job `cli-path` is supplied.
 
 The CLI workflow assembles the standalone Rust package from the validated release commit, then publishes it to crates.io with `cargo publish --locked` and Trusted Publishing.
 The `rust-lang/crates-io-auth-action` Action uses GitHub OIDC to obtain a short-lived token.
@@ -95,6 +98,27 @@ No crates.io token secret is required.
 The workflow also builds Python distributions from that commit and uploads them to PyPI with `uv publish --trusted-publishing always` and GitHub OIDC, without a PyPI token secret.
 See the [Python distribution guide](https://github.com/changenote/changenote/blob/main/python/README.md) for supported platforms and required PyPI settings.
 This routing policy is repository-specific.
+
+## File-free release rollout
+
+This CLI change depends on [Action PR #17](https://github.com/changenote/action/pull/17).
+The workflow and compatibility tests pin its exact candidate SHA; merge and review the compatible Action before activating the CLI workflow on `main`.
+The implementation PR does not authorize a release workflow dispatch, version tag, registry upload, or external consumer pin update.
+
+1. The Action maintainer must merge compatible support and confirm its complete PR CI results with the published CLI.
+2. The CLI maintainer must confirm the pinned Action's complete tests against the wheel built from this CLI revision.
+3. The repository release owner must review the exact Action SHA and the `/manage-pr`, `/inspect`, `/publish`, and trusted `cli-path` wiring before activation.
+4. Consumer maintainers, including `changenote/example`, must migrate batch-file readers to verified metadata and update their reviewed pins separately.
+
+Before the first file-free release, revert only intended implementation changes if recovery is needed.
+After a file-free release is committed, keep compatible new tooling to inspect and retry the exact release SHA.
+Do not downgrade the Action alone, invent a batch file, rewrite release commits, move tags, or replace published Release text.
+Do not merge another release until partial publication of the selected release is resolved.
+
+The repository administrator and registry owner must separately authorize hosted verification in a disposable repository with the required token, branch rules, environments, and registry setup.
+Verify one managed merge and a retry with no duplicate publication.
+Local tests do not verify credentials, OIDC, native macOS/Windows builds, real registry access, or remote race recovery.
+Do not activate production publication based only on mocks.
 
 ## Source-link rollout
 

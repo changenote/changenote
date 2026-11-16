@@ -8,9 +8,9 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-ACTION_REVISION = "4b2d07126b8a4da4b44aa5fb8256dd81a69e2e3a"
-ACTION_ROOT = "changenote/action@" + ACTION_REVISION
-ACTION_PREVIEW = "changenote/action/preview@" + ACTION_REVISION
+ACTION_REVISION = "9323bb6f0a1dfdae6124649e69bc90a990aab20c"
+ACTION_MANAGE_PR = "changenote/action/manage-pr@" + ACTION_REVISION
+ACTION_INSPECT = "changenote/action/inspect@" + ACTION_REVISION
 ACTION_PUBLISH = "changenote/action/publish@" + ACTION_REVISION
 
 
@@ -112,16 +112,17 @@ class Metadata(unittest.TestCase):
             self.assertIn('echo "$GITHUB_WORKSPACE/target/release" >> "$GITHUB_PATH"', build["run"])
             for step in steps:
                 uses = step.get("uses", "")
-                if uses not in {ACTION_ROOT, ACTION_PREVIEW, ACTION_PUBLISH}:
+                if uses not in {ACTION_MANAGE_PR, ACTION_INSPECT, ACTION_PUBLISH}:
                     continue
                 references.append(uses)
                 self.assertLess(steps.index(build), steps.index(step))
                 self.assertEqual(step["with"]["base-branch"], "main")
-                expected_inputs = {"base-branch"}
+                self.assertEqual(step["with"]["cli-path"], "${{ github.workspace }}/target/release/changenote")
+                expected_inputs = {"base-branch", "cli-path"}
                 if uses == ACTION_PUBLISH:
                     expected_inputs.add("expected-release-commit")
                 self.assertEqual(set(step["with"]), expected_inputs)
-        self.assertEqual(references, [ACTION_ROOT, ACTION_PREVIEW, ACTION_PUBLISH])
+        self.assertEqual(references, [ACTION_MANAGE_PR, ACTION_INSPECT, ACTION_PUBLISH])
         workflow = (ROOT / ".github/workflows/release.yml").read_text()
         self.assertNotIn("scripts/action/", workflow)
         self.assertNotIn("uses: $/", workflow)
@@ -129,7 +130,7 @@ class Metadata(unittest.TestCase):
         route = next(step for step in jobs["route"]["steps"] if step.get("id") == "route")
         self.assertEqual(route["run"], "uv run --no-project python scripts/route-release.py")
 
-    def test_ci_keeps_cli_gates_without_action_tests_or_lint_filters(self):
+    def test_ci_keeps_cli_gates_and_checks_the_built_wheel_with_pinned_action_tests(self):
         jobs = read_yaml(ROOT / ".github/workflows/ci.yml")["jobs"]
         self.assertEqual(set(jobs), {"workflows", "python", "check"})
         runs = "\n".join(step.get("run", "") for step in jobs["workflows"]["steps"])
@@ -141,8 +142,17 @@ class Metadata(unittest.TestCase):
         self.assertIn('"$(go env GOPATH)/bin/actionlint"', lint["run"])
         self.assertNotIn("-ignore", lint["run"])
         ci = (ROOT / ".github/workflows/ci.yml").read_text()
-        for removed in ("tests/actions", "tests/action_metadata", "scripts/action/", "shellcheck"):
+        for removed in ("scripts/action/", "shellcheck"):
             self.assertNotIn(removed, ci)
+        compatibility = next(step for step in jobs["python"]["steps"] if step.get("name") == "Check out compatible Action tests")
+        self.assertEqual(compatibility["with"]["repository"], "changenote/action")
+        self.assertEqual(compatibility["with"]["ref"], ACTION_REVISION)
+        self.assertEqual(compatibility["with"]["persist-credentials"], "false")
+        run = next(step for step in jobs["python"]["steps"] if step.get("name") == "Verify Action compatibility with the built wheel")
+        self.assertEqual(run["working-directory"], compatibility["with"]["path"])
+        self.assertIn("--no-index --find-links", run["run"])
+        for suite in ("actions", "action_metadata"):
+            self.assertIn(f"python -m unittest discover -s tests/{suite} -v", run["run"])
         rust = [step.get("run") for step in jobs["check"]["steps"]]
         for gate in (
             "cargo fmt --check",
@@ -164,6 +174,17 @@ class Metadata(unittest.TestCase):
             "uvx --isolated --no-index --find-links dist/python-binary changenote --help",
         ):
             self.assertIn(gate, distribution)
+
+    def test_build_preparation_uses_verified_commit_and_package_metadata(self):
+        jobs = read_yaml(ROOT / ".github/workflows/release.yml")["jobs"]
+        self.assertEqual(jobs["publish"]["outputs"]["releases"], "${{ steps.publish.outputs.releases }}")
+        for name in ("crates-io", "wheels"):
+            prepare = next(step for step in jobs[name]["steps"] if step.get("name") == "Set release build version")
+            self.assertEqual(prepare["env"], {
+                "EXPECTED_RELEASE_COMMIT": "${{ needs.publish.outputs.release-commit }}",
+                "CHANGENOTE_RELEASES": "${{ needs.publish.outputs.releases }}",
+            })
+            self.assertIn("workflow/scripts/prepare-python-release.py source", prepare["run"])
 
     def test_ci_checks_source_archive_with_release_builder(self):
         ci = read_yaml(ROOT / ".github/workflows/ci.yml")["jobs"]["python"]
@@ -275,7 +296,7 @@ class Metadata(unittest.TestCase):
         for name in ("release", "publish", "crates-io", "wheels"):
             job = workflow["jobs"][name]
             self.assertEqual(job["steps"][0]["with"]["persist-credentials"], "false")
-        self.assertEqual(workflow["jobs"]["release"]["steps"][-1]["uses"], ACTION_ROOT)
+        self.assertEqual(workflow["jobs"]["release"]["steps"][-1]["uses"], ACTION_MANAGE_PR)
 
     def test_wheel_and_pypi_concurrency_keeps_releases_independent(self):
         jobs = read_yaml(ROOT / ".github/workflows/release.yml")["jobs"]
@@ -307,7 +328,7 @@ class Metadata(unittest.TestCase):
     def test_publication_checks_route_then_preview_before_writes(self):
         steps = read_yaml(ROOT / ".github/workflows/release.yml")["jobs"]["publish"]["steps"]
         preview, check, publish = steps[-3:]
-        self.assertEqual(preview["uses"], ACTION_PREVIEW)
+        self.assertEqual(preview["uses"], ACTION_INSPECT)
         self.assertEqual(preview["id"], "preview")
         self.assertEqual(check["env"], {
             "EXPECTED_RELEASE_COMMIT": "${{ needs.route.outputs.release-commit }}",

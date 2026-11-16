@@ -68,15 +68,17 @@ jobs:
           cargo test --locked
           cargo build --locked --release
           echo "$GITHUB_WORKSPACE/target/release" >> "$GITHUB_PATH"
-      # Merge https://github.com/changenote/action/pull/1 before this workflow migration.
-      - uses: changenote/action@4b2d07126b8a4da4b44aa5fb8256dd81a69e2e3a
+      # Merge the companion file-free Action support before activating this workflow.
+      - uses: changenote/action/manage-pr@9323bb6f0a1dfdae6124649e69bc90a990aab20c
         with:
           base-branch: main
+          cli-path: ${{ github.workspace }}/target/release/changenote
 
   publish:
     name: Publish GitHub release
     outputs:
       release-commit: ${{ steps.publish.outputs.release-commit }}
+      releases: ${{ steps.publish.outputs.releases }}
     needs: route
     concurrency:
       group: changenote-publication-main
@@ -101,10 +103,11 @@ jobs:
           cargo build --locked --release
           echo "$GITHUB_WORKSPACE/target/release" >> "$GITHUB_PATH"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-      - uses: changenote/action/preview@4b2d07126b8a4da4b44aa5fb8256dd81a69e2e3a
+      - uses: changenote/action/inspect@9323bb6f0a1dfdae6124649e69bc90a990aab20c
         id: preview
         with:
           base-branch: main
+          cli-path: ${{ github.workspace }}/target/release/changenote
       - name: Check selected batch
         env:
           EXPECTED_RELEASE_COMMIT: ${{ needs.route.outputs.release-commit }}
@@ -116,10 +119,11 @@ jobs:
       - name: Publish selected batch
         id: publish
         if: steps.preview.outputs.release-commit != ''
-        uses: changenote/action/publish@4b2d07126b8a4da4b44aa5fb8256dd81a69e2e3a
+        uses: changenote/action/publish@9323bb6f0a1dfdae6124649e69bc90a990aab20c
         with:
           base-branch: main
           expected-release-commit: ${{ steps.preview.outputs.release-commit }}
+          cli-path: ${{ github.workspace }}/target/release/changenote
 
   crates-io:
     name: Publish to crates.io
@@ -155,6 +159,9 @@ jobs:
       # Use the same validated version and legacy build preparation as wheels.
       - name: Set release build version
         id: prepare
+        env:
+          EXPECTED_RELEASE_COMMIT: ${{ needs.publish.outputs.release-commit }}
+          CHANGENOTE_RELEASES: ${{ needs.publish.outputs.releases }}
         run: |
           version=$(uv run --no-project python workflow/scripts/prepare-python-release.py source)
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -208,6 +215,9 @@ jobs:
       - name: Set release build version
         id: prepare
         shell: bash
+        env:
+          EXPECTED_RELEASE_COMMIT: ${{ needs.publish.outputs.release-commit }}
+          CHANGENOTE_RELEASES: ${{ needs.publish.outputs.releases }}
         run: |
           version=$(uv run --no-project python workflow/scripts/prepare-python-release.py source)
           echo "version=$version" >> "$GITHUB_OUTPUT"

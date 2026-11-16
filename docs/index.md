@@ -79,7 +79,8 @@ changenote version
 git diff
 ```
 
-`version` updates version files and supported existing lockfiles, adds changelog entries, saves `.changenote/releases.json`, and removes consumed notes.
+`version` updates version files and supported existing lockfiles, adds changelog entries, and removes consumed notes.
+No release state file is created.
 Review the changes before you commit them.
 
 For the plain-text `VERSION` example, commit the release outputs, then create the local tag:
@@ -87,7 +88,6 @@ For the plain-text `VERSION` example, commit the release outputs, then create th
 ```sh
 git add -- \
   VERSION CHANGELOG.md \
-  .changenote/releases.json \
   .changenote/hello-world.md
 git commit \
   -m "chore(release): version packages"

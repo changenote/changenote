@@ -85,8 +85,21 @@ fn planning_does_not_require_git() {
 fn custom_tag_creation_is_exact_and_idempotent() {
     let dir = fixture(Some(json!("sdk/v")));
     let root = dir.path();
-    changenote::version(root).unwrap();
     git(root, &["init", "-q"]);
+    git(root, &["add", "--", "."]);
+    git(
+        root,
+        &[
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-qm",
+            "parent",
+        ],
+    );
+    changenote::version(root).unwrap();
     commit(root);
     // Tag identity is fixture-only and is not written to repository configuration.
     let output = Command::new(env!("CARGO_BIN_EXE_changenote"))

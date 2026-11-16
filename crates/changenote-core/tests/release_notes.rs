@@ -1,7 +1,6 @@
 use changenote::{Bump, release_notes};
 use changenote_core as changenote;
 use semver::Version;
-use serde_json::Value;
 use std::fs;
 use tempfile::TempDir;
 
@@ -30,7 +29,7 @@ fn exact_entry_preserves_markdown_and_ignores_code_headings() {
 }
 
 #[test]
-fn generated_groups_use_note_bumps_and_saved_batch_has_only_metadata() {
+fn generated_groups_use_note_bumps_without_a_saved_batch() {
     let dir = project();
     changenote::add(
         dir.path(),
@@ -47,14 +46,7 @@ fn generated_groups_use_note_bumps_and_saved_batch_has_only_metadata() {
         release_notes(dir.path(), "pkg", &Version::new(1, 1, 0)).unwrap(),
         "### Minor Changes\n\n- Feature\n\n### Patch Changes\n\n- Fix\n  \n  ```rs\n  run();\n  ```\n"
     );
-    let batch: Value = serde_json::from_str(
-        &fs::read_to_string(dir.path().join(".changenote/releases.json")).unwrap(),
-    )
-    .unwrap();
-    assert_eq!(
-        batch,
-        serde_json::json!([{"package":"pkg","old_version":"1.0.0","version":"1.1.0","bump":"minor","tag":"v1.1.0"}])
-    );
+    assert!(!dir.path().join(".changenote/releases.json").exists());
 }
 
 #[test]

@@ -99,19 +99,14 @@ fn go_tag_matrix_and_initialization_preserve_sources() {
         }
         let mut expected_paths: Vec<_> = before.keys().cloned().collect();
         expected_paths.retain(|p| p != ".changenote/change.md");
-        expected_paths.extend([
-            if directory == "." {
-                "CHANGELOG.md".to_owned()
-            } else {
-                format!("{directory}/CHANGELOG.md")
-            },
-            ".changenote/releases.json".to_owned(),
-        ]);
+        expected_paths.push(if directory == "." {
+            "CHANGELOG.md".to_owned()
+        } else {
+            format!("{directory}/CHANGELOG.md")
+        });
         expected_paths.sort();
         assert_eq!(after.keys().cloned().collect::<Vec<_>>(), expected_paths);
-        let batch: Value = serde_json::from_slice(&after[".changenote/releases.json"]).unwrap();
-        assert_eq!(batch[0]["tag"], expected);
-        assert_eq!(batch[0].as_object().unwrap().len(), 5);
+        assert!(!root.join(".changenote/releases.json").exists());
     }
 }
 

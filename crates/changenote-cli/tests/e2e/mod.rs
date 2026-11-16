@@ -12,6 +12,7 @@ mod multilanguage_config;
 mod planning;
 mod planning_examples;
 mod pr_check;
+mod release_history;
 mod release_notes;
 mod releases;
 mod sections;

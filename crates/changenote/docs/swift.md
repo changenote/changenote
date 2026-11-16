@@ -131,7 +131,7 @@ If the repository already uses a plain-text `VERSION`, retain it as the primary 
 ```
 
 Both files must exist and contain the same stable version before planning or writing.
-A release updates both, but produces one changelog, saved batch entry, and tag.
+A release updates both, but produces one changelog, release-plan entry, and tag.
 Do not run a second bump script after changenote: use one release-version calculation.
 
 ## Build numbers and distribution

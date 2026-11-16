@@ -31,7 +31,7 @@ fn git(root: &Path, args: &[&str]) -> String {
 }
 
 fn commit(root: &Path) {
-    git(root, &["add", ".changenote", "VERSION", "CHANGELOG.md"]);
+    git(root, &["add", "--", "."]);
     // Supply identity for this one test command without changing Git configuration.
     git(
         root,
@@ -76,6 +76,7 @@ fn git_tags_require_commit_and_are_idempotent_at_same_commit() {
     let dir = project();
     git(dir.path(), &["init", "--initial-branch=main"]);
     note(dir.path(), "hello", Bump::Minor);
+    commit(dir.path());
     changenote::version(dir.path()).unwrap();
     assert!(changenote::tag(dir.path()).is_err());
     commit(dir.path());
@@ -93,9 +94,11 @@ fn git_tags_require_commit_and_are_idempotent_at_same_commit() {
     assert_eq!(String::from_utf8(output.stdout).unwrap().trim(), "v0.1.0");
     assert!(changenote::tag(dir.path()).unwrap().is_empty());
     assert_eq!(git(dir.path(), &["cat-file", "-t", "v0.1.0"]), "tag");
+    let release = git(dir.path(), &["rev-parse", "HEAD"]);
     fs::write(dir.path().join("CHANGELOG.md"), "Edited\n").unwrap();
     commit(dir.path());
-    assert!(changenote::tag(dir.path()).is_err());
+    assert!(changenote::tag(dir.path()).unwrap().is_empty());
+    assert_eq!(git(dir.path(), &["rev-parse", "v0.1.0^{commit}"]), release);
 }
 
 #[test]
