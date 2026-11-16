@@ -30,7 +30,7 @@ fn read(root: &Path, path: &str) -> String {
 }
 
 #[test]
-fn updates_all_formats_and_preserves_saved_batch_shape() {
+fn updates_all_formats_without_a_saved_batch() {
     let dir = fixture(json!([
         "extra",
         "Cargo.toml",
@@ -73,12 +73,9 @@ fn updates_all_formats_and_preserves_saved_batch_shape() {
         "[project]\nversion = \"1.2.4\"\n"
     );
     assert_eq!(read(root, "package.json"), before.replace("1.2.3", "1.2.4"));
-    let saved: Value = serde_json::from_str(&read(root, ".changenote/releases.json")).unwrap();
-    assert_eq!(saved[0].as_object().unwrap().len(), 5);
-    assert!(saved[0].get("notes").is_none());
-    let batch = read(root, ".changenote/releases.json");
+    assert!(!root.join(".changenote/releases.json").exists());
     assert!(changenote::version(root).unwrap().is_empty());
-    assert_eq!(read(root, ".changenote/releases.json"), batch);
+    assert!(!root.join(".changenote/releases.json").exists());
 }
 
 #[test]

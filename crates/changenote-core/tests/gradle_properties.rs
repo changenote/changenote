@@ -1,6 +1,6 @@
 use changenote_core as changenote;
 use semver::Version;
-use serde_json::{Value, json};
+use serde_json::json;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -95,10 +95,7 @@ fn updates_only_two_values_once_for_any_bump_and_preserves_empty_releases() {
             assert!(!root.join("VERSION").exists());
             assert!(!root.join(".changenote/change.md").exists());
             assert!(!root.join(".changenote/another.md").exists());
-            let batch: Value = serde_json::from_str(&read(root, ".changenote/releases.json"))
-                .expect("parse batch");
-            assert_eq!(batch[0].as_object().expect("batch object").len(), 5);
-            assert!(batch[0].get("notes").is_none());
+            assert!(!root.join(".changenote/releases.json").exists());
             let released = snapshot(root);
             assert!(changenote::status(root).expect("empty plan").is_empty());
             assert!(changenote::version(root).expect("empty release").is_empty());

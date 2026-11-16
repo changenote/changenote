@@ -144,6 +144,7 @@ impl DoctorReport {
                     )?);
                 }
             }
+            // An old batch is a migration deletion and needs the same path checks.
             if !releases.is_empty() {
                 outputs.push(paths::checked_path(
                     root,

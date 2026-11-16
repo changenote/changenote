@@ -63,6 +63,24 @@ jobs:
       - run: uv build --out-dir dist/python-binary
       - run: uv run --no-project python scripts/check_python_sdist.py dist/python-binary/*.tar.gz
       - run: uvx --isolated --no-index --find-links dist/python-binary changenote --help
+      - name: Check out compatible Action tests
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: changenote/action
+          ref: df3bc0cfaa30fe42a542d663e6ea986bd6dcb8db
+          path: .verifications/action-compatibility
+          persist-credentials: false
+      - name: Verify Action compatibility with the built wheel
+        working-directory: .verifications/action-compatibility
+        run: |
+          uv venv "$RUNNER_TEMP/changenote-compatibility"
+          uv pip install --python "$RUNNER_TEMP/changenote-compatibility/bin/python" \
+            --no-index --find-links "$GITHUB_WORKSPACE/dist/python-binary" changenote
+          export PATH="$RUNNER_TEMP/changenote-compatibility/bin:$PATH"
+          changenote --version
+          sha256sum "$(command -v changenote)"
+          uv run --no-project python -m unittest discover -s tests/actions -v
+          uv run --no-project --with pyyaml python -m unittest discover -s tests/action_metadata -v
 
   check:
     name: check

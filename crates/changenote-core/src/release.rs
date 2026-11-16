@@ -2,7 +2,8 @@
 use crate::config::ReleaseConfig;
 use crate::note::NoteData;
 use crate::{
-    changelog, config, lockfile, note, paths, planning, sections, transaction, version_file,
+    changelog, config, history, lockfile, note, paths, planning, sections, transaction,
+    version_file,
 };
 use anyhow::{Result, ensure};
 use semver::Version;
@@ -33,28 +34,6 @@ pub struct Release {
     /// Bump for each summary, in the same order as `notes`.
     #[serde(skip)]
     pub note_bumps: Vec<Bump>,
-}
-
-#[derive(Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct SavedRelease {
-    package: String,
-    old_version: Version,
-    version: Version,
-    bump: Bump,
-    tag: String,
-}
-
-impl From<&Release> for SavedRelease {
-    fn from(release: &Release) -> Self {
-        Self {
-            package: release.package.clone(),
-            old_version: release.old_version.clone(),
-            version: release.version.clone(),
-            bump: release.bump,
-            tag: release.tag.clone(),
-        }
-    }
 }
 
 /// Read one package's exact changelog version body without changing files.
@@ -219,25 +198,22 @@ pub fn version_with_output(
             manifests.push((version_path, content));
         }
     }
-    writes.push((
-        paths::checked_path(root, Path::new(".changenote/releases.json"))?,
-        format!(
-            "{}\n",
-            serde_json::to_string_pretty(
-                &releases.iter().map(SavedRelease::from).collect::<Vec<_>>()
-            )?
-        ),
-    ));
+    // The former saved batch is a migration deletion, not a new output.
+    let old_batch = paths::checked_path(root, Path::new(".changenote/releases.json"))?;
     let paths: Vec<_> = version_paths
         .into_iter()
         .chain(locks.iter().map(|lock| lock.path.clone()))
         .chain(writes.iter().map(|(path, _)| path.clone()))
+        .chain(std::iter::once(old_batch.clone()))
         .chain(notes.iter().map(|(path, _)| path.clone()))
         .collect();
     transaction::apply(&paths, || {
         lockfile::apply(&manifests, &locks)?;
         for (path, content) in writes {
             fs::write(path, content)?;
+        }
+        if old_batch.try_exists()? {
+            fs::remove_file(old_batch)?;
         }
         for path in consumed {
             fs::remove_file(path)?;
@@ -248,7 +224,12 @@ pub fn version_with_output(
 }
 
 fn git(root: &Path, args: &[&str]) -> Result<String> {
-    let output = Command::new("git").current_dir(root).args(args).output()?;
+    let output = Command::new("git")
+        .current_dir(root)
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .args(["-c", "core.fsmonitor=false"])
+        .args(args)
+        .output()?;
     ensure!(
         output.status.success(),
         "git failed: {}",
@@ -258,18 +239,11 @@ fn git(root: &Path, args: &[&str]) -> Result<String> {
 }
 
 pub fn tag(root: &Path) -> Result<Vec<String>> {
-    use anyhow::Context;
-
-    let release_config = config::load_release_config(root)?;
-    let config = &release_config.config;
     ensure!(
         git(root, &["status", "--porcelain"])?.is_empty(),
         "commit all changes before tagging"
     );
-    let releases: Vec<SavedRelease> = serde_json::from_str(&fs::read_to_string(
-        paths::checked_path(root, Path::new(".changenote/releases.json"))?,
-    )?)?;
-    let head = git(root, &["rev-parse", "HEAD"])?;
+    let (commit, releases) = history::discover(root)?;
     let existing_tags = git(
         root,
         &["for-each-ref", "--format=%(refname:strip=2)", "refs/tags"],
@@ -277,18 +251,7 @@ pub fn tag(root: &Path) -> Result<Vec<String>> {
     let mut pending = Vec::new();
     let mut tags = BTreeSet::new();
     for release in releases {
-        let pkg = config
-            .packages
-            .get(&release.package)
-            .context("unknown release package")?;
-        ensure!(
-            version_file::read_version(&root.join(&pkg.path).join(&pkg.version_file))?
-                == release.version,
-            "release version does not match version file"
-        );
         validate_tag(&release.tag)?;
-        let expected = release_tag(&release_config, &release.package, &release.version)?;
-        ensure!(release.tag == expected, "invalid release tag");
         reserve_release_tag(&mut tags, &release.tag)?;
         for existing in existing_tags.lines() {
             ensure!(
@@ -306,7 +269,7 @@ pub fn tag(root: &Path) -> Result<Vec<String>> {
                         "rev-parse",
                         &format!("refs/tags/{}^{{commit}}", release.tag)
                     ]
-                )? == head,
+                )? == commit,
                 "tag already exists on a different commit: {}",
                 release.tag
             );
@@ -315,7 +278,7 @@ pub fn tag(root: &Path) -> Result<Vec<String>> {
         }
     }
     for tag in &pending {
-        git(root, &["tag", "-a", tag, "-m", tag])?;
+        git(root, &["tag", "-a", tag, &commit, "-m", tag])?;
     }
     Ok(pending)
 }

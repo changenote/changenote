@@ -145,9 +145,9 @@ mod tests {
                 let error = apply(&paths, || {
                     fs::write(&unrelated, "keep this new file")?;
                     for (stage, path) in paths.iter().enumerate() {
-                        if stage < 5 {
+                        if stage < 4 {
                             fs::write(path, "updated")?;
-                        } else {
+                        } else if path.try_exists()? {
                             fs::remove_file(path)?;
                         }
                         if stage == failed_stage {

@@ -1,7 +1,6 @@
 use changenote::{Bump, parse_note};
 use changenote_core as changenote;
 use semver::Version;
-use serde_json::Value;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -32,7 +31,7 @@ fn git(root: &Path, args: &[&str]) -> String {
 }
 
 fn commit(root: &Path) {
-    git(root, &["add", ".changenote", "VERSION", "CHANGELOG.md"]);
+    git(root, &["add", "--", "."]);
     // Supply identity for this one test command without changing Git configuration.
     git(
         root,
@@ -119,14 +118,11 @@ fn consumes_notes_and_preserves_previous_changelog() {
     assert!(log.contains("Old entry"));
     assert!(!dir.path().join(".changenote/hello-world.md").exists());
     assert!(dir.path().join(".changenote/README.md").exists());
-    let saved = fs::read_to_string(dir.path().join(".changenote/releases.json")).unwrap();
-    let batch: Value = serde_json::from_str(&saved).unwrap();
-    assert!(batch[0].get("note_bumps").is_none());
+    assert!(!dir.path().join(".changenote/releases.json").exists());
+    let output = serde_json::to_value(&releases).unwrap();
+    assert!(output[0].get("note_bumps").is_none());
     assert!(changenote::version(dir.path()).unwrap().is_empty());
-    assert_eq!(
-        fs::read_to_string(dir.path().join(".changenote/releases.json")).unwrap(),
-        saved
-    );
+    assert!(!dir.path().join(".changenote/releases.json").exists());
 }
 
 #[test]
@@ -255,6 +251,8 @@ fn tag_rejects_old_note_bearing_batches_without_creating_tags() {
     let dir = project();
     git(dir.path(), &["init", "--initial-branch=main"]);
     note(dir.path(), "hello", Bump::Minor);
+    fs::write(dir.path().join("CHANGELOG.md"), "").unwrap();
+    commit(dir.path());
     let releases = changenote::version(dir.path()).unwrap();
     fs::write(
         dir.path().join(".changenote/releases.json"),

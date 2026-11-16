@@ -41,10 +41,7 @@ fn git(root: &Path, args: &[&str]) -> String {
 }
 
 fn commit(root: &Path) {
-    git(
-        root,
-        &["add", "--", ".changenote", "VERSION", "CHANGELOG.md"],
-    );
+    git(root, &["add", "--", "."]);
     git(
         root,
         &[
@@ -236,27 +233,25 @@ fn tag_namespace_conflicts_fail_before_version_writes() {
 fn saved_tag_namespace_conflicts_fail_before_any_tag_creation() {
     let dir = two_packages("other/v");
     let root = dir.path();
-    changenote::version(root).unwrap();
-    let config_path = root.join(".changenote/config.json");
-    let mut config: Value = serde_json::from_slice(&fs::read(&config_path).unwrap()).unwrap();
-    config["packages"]["other"]["tag_prefix"] = json!("v1.2.4/v");
-    fs::write(config_path, config.to_string()).unwrap();
+    git(root, &["init", "-q"]);
+    commit(root);
+    let mut batch = serde_json::to_value(changenote::version(root).unwrap()).unwrap();
+    for entry in batch.as_array_mut().unwrap() {
+        entry.as_object_mut().unwrap().remove("notes");
+    }
     let batch_path = root.join(".changenote/releases.json");
-    let mut batch: Value = serde_json::from_slice(&fs::read(&batch_path).unwrap()).unwrap();
     for entry in batch.as_array_mut().unwrap() {
         if entry["package"] == "other" {
             entry["tag"] = json!("v1.2.4/v1.2.4");
         }
     }
     fs::write(batch_path, batch.to_string()).unwrap();
-    git(root, &["init", "-q"]);
-    git(root, &["add", "--", "other"]);
     commit(root);
     assert!(
         changenote::tag(root)
             .unwrap_err()
             .to_string()
-            .contains("namespace conflict")
+            .contains("parent release plan")
     );
     assert_eq!(git(root, &["tag", "--list"]), "");
 }
@@ -266,8 +261,9 @@ fn existing_tag_namespaces_fail_preflight_without_creating_tags() {
     for existing in ["sdk", "sdk/v1.2.4/child"] {
         let dir = fixture(Some(json!("sdk/v")));
         let root = dir.path();
-        changenote::version(root).unwrap();
         git(root, &["init", "-q"]);
+        commit(root);
+        changenote::version(root).unwrap();
         commit(root);
         git(root, &["tag", existing]);
         assert!(
@@ -285,9 +281,13 @@ fn saved_tags_must_match_prefix_and_cannot_be_duplicated() {
     for invalid in ["v1.2.4", "sdk//v1.2.4", "duplicate"] {
         let dir = fixture(Some(json!("sdk/v")));
         let root = dir.path();
-        changenote::version(root).unwrap();
+        git(root, &["init", "-q"]);
+        commit(root);
+        let mut saved = serde_json::to_value(changenote::version(root).unwrap()).unwrap();
+        for entry in saved.as_array_mut().unwrap() {
+            entry.as_object_mut().unwrap().remove("notes");
+        }
         let path = root.join(".changenote/releases.json");
-        let mut saved: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
         if invalid == "duplicate" {
             let entry = saved[0].clone();
             saved.as_array_mut().unwrap().push(entry);
@@ -295,7 +295,6 @@ fn saved_tags_must_match_prefix_and_cannot_be_duplicated() {
             saved[0]["tag"] = json!(invalid);
         }
         fs::write(path, saved.to_string()).unwrap();
-        git(root, &["init", "-q"]);
         commit(root);
         assert!(changenote::tag(root).is_err());
         assert_eq!(git(root, &["tag", "--list"]), "");

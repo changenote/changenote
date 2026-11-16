@@ -110,18 +110,20 @@ changenote version
 git diff
 ```
 
-`version` updates version files and supported existing lockfiles, adds changelog entries, saves `.changenote/releases.json`, and removes consumed notes.
+`version` updates version files and supported existing lockfiles, adds changelog entries, and removes consumed notes.
+It does not create a release state file.
 
 For the plain-text `VERSION` example, review and commit those changes, then create the local tag:
 
 ```sh
-git add -- VERSION CHANGELOG.md .changenote/releases.json .changenote/hello-world.md
+git add -- VERSION CHANGELOG.md .changenote/hello-world.md
 git commit -m "chore(release): version packages"
 changenote tag
 ```
 
 The tag is `v0.1.0`.
-`tag` requires a clean working tree; it does not push tags or publish artifacts.
+`tag` requires a clean working tree and complete Git history.
+It tags the committed release, even after later unrelated commits; it does not push or publish.
 See [release behavior and recovery](https://github.com/changenote/changenote/blob/main/docs/releases.md) before automating releases.
 
 ## Commands
@@ -135,7 +137,7 @@ See [release behavior and recovery](https://github.com/changenote/changenote/blo
 | `doctor` | Report local release prerequisites without file changes. |
 | `version` | Apply the plan and consume notes. |
 | `release-notes` | Print one package's changelog entry for an exact version. |
-| `tag` | Create local annotated tags for the committed release batch. |
+| `tag` | Create local annotated tags for the latest committed release. |
 | `skill` | Print the bundled agent skill as Markdown. |
 | `completion` | Print a Bash, Zsh, or Fish completion script. |
 
@@ -175,24 +177,24 @@ Generate it again after upgrading changenote.
 
 ## GitHub Actions
 
-Choose the Action that matches your publication process:
+Use the root Action for release PRs and optional publication:
 
 | Goal | Action | Setup |
 | --- | --- | --- |
-| Manage version PRs and publish tags and GitHub Releases | `changenote/action/release` | Installs the trusted pinned CLI and prepares package-manager caches. |
-| Manage version PRs and run optional project publication scripts | `changenote/action` | Requires an installed compatible CLI and caller-owned tools. |
+| Manage version PRs, optional scripts, tags, and GitHub Releases | `changenote/action` | Installs the selected CLI and prepares package-manager caches. |
 
 Actions are maintained in [changenote/action](https://github.com/changenote/action).
 Pin Actions to reviewed full commit SHAs from that repository, not CLI commit SHAs.
-The root, `/release`, `/check`, `/preview`, and `/publish` entry paths remain supported.
-With neither `publish-script` nor `release-script`, the root Action manages PRs without publication.
+The public entry points are root, `/setup`, `/prepare`, `/check`, `/manage-pr`, `/inspect`, and `/publish`.
+Root manages PRs by default. Enable `push-git-tags` and `create-github-releases` explicitly for built-in publication.
+Upgrade the Action before enabling file-free CLI releases; replace batch-file readers with verified `release-commit` and `releases` outputs.
 Actions never approve or merge their PRs.
 
 - [GitHub Actions guide](https://github.com/changenote/action/blob/main/docs/github-actions.md): setup, permissions, inputs, and external CI.
-- [Minimal release workflow](https://github.com/changenote/action/blob/main/examples/github-actions/release.yml): built-in tag and GitHub Release publication.
-- [Project-script workflow](https://github.com/changenote/action/blob/main/examples/github-actions/command-hooks.yml): caller-owned builds and publication.
+- [Minimal release workflow](https://github.com/changenote/example/blob/main/examples/actions/root.yml): built-in tag and GitHub Release publication.
+- [Project-script workflow](https://github.com/changenote/example/blob/main/examples/actions/command-hooks.yml): caller-owned builds and publication.
 - [PR note checks](https://github.com/changenote/action/blob/main/docs/checks.md#github-action-report): read-only checks for contributor PRs.
-- [Lower-level Actions](https://github.com/changenote/action/blob/main/docs/github-actions-reference.md): separate PR, preview, and publication operations.
+- [Lower-level Actions](https://github.com/changenote/action/blob/main/docs/github-actions-reference.md): separate PR, inspection, and publication operations.
 - [Repository migration](https://github.com/changenote/action/blob/main/docs/migration.md): new repository publication and production pin requirements.
 
 Built-in publication creates Git tags and GitHub Releases, not registry uploads.

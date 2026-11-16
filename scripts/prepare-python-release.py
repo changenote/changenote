@@ -1,13 +1,22 @@
 """Validate the release version and prepare legacy Cargo build versions."""
 
 import json
+import os
 import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
 
 
-def prepare(root: Path) -> str:
+def prepare(root: Path, release_commit: str, releases: list) -> str:
+    if not re.fullmatch(r"[0-9a-f]{40}", release_commit):
+        raise ValueError("Expected a full lowercase release commit SHA")
+    actual = subprocess.check_output(
+        ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
+    ).strip()
+    if actual != release_commit:
+        raise ValueError("Source checkout must match the verified release commit")
     config = json.loads((root / ".changenote/config.json").read_text())
     source = config["packages"]["changenote"]
     version_file = source["version_file"]
@@ -29,13 +38,17 @@ def prepare(root: Path) -> str:
         r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version
     ):
         raise ValueError("Release source must contain a stable SemVer version")
-    batch = json.loads((root / ".changenote/releases.json").read_text())
     if (
-        len(batch) != 1
-        or batch[0]["package"] != "changenote"
-        or batch[0]["version"] != version
+        not isinstance(releases, list)
+        or len(releases) != 1
+        or not isinstance(releases[0], dict)
+        or set(releases[0]) != {"package", "version", "tag"}
+        or releases[0]["package"] != "changenote"
+        or releases[0]["version"] != version
+        or not isinstance(releases[0]["tag"], str)
+        or not releases[0]["tag"]
     ):
-        raise ValueError("Release source must match the changenote release batch")
+        raise ValueError("Release source must match verified changenote release metadata")
 
     locked = [p for p in tomllib.loads(lock)["package"] if p["name"] == "changenote"]
     if package["name"] != "changenote" or len(locked) != 1 or "source" in locked[0]:
@@ -65,4 +78,7 @@ def prepare(root: Path) -> str:
 
 
 if __name__ == "__main__":
-    print(prepare(Path(sys.argv[1])))
+    print(prepare(
+        Path(sys.argv[1]), os.environ["EXPECTED_RELEASE_COMMIT"],
+        json.loads(os.environ["CHANGENOTE_RELEASES"]),
+    ))

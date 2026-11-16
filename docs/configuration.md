@@ -119,7 +119,7 @@ These files use the same filename-based formats as primary sources.
 All versions must match before planning or writing.
 Missing files, symlinks, parent paths, duplicate paths, and overlaps with other release outputs are rejected.
 An absent or empty array adds no outputs; `null` is invalid.
-A release updates every listed version file, but still creates only one package changelog, saved batch entry, and tag.
+A release updates every listed version file, but still creates only one package changelog, release-plan entry, and tag.
 Fixed-group releases also update these files. Internal dependency requirements are not changed.
 Do not list a dynamic Python version that already comes from the primary source.
 
@@ -131,11 +131,11 @@ Duplicate tags and slash-delimited tag namespace conflicts in one release plan a
 For example, Git cannot store both `v1.2.3` and `v1.2.3/child`.
 Local tagging and publication preview also reject namespace conflicts with existing tags.
 There are no variables or executable templates. Omission retains the existing package-count-based default.
-Set the prefix before versioning; do not edit saved batch tags or move existing tags.
+Set the prefix before versioning; do not edit committed release outputs or move existing tags.
 
 Upgrade CLI and Action pins together before using these fields.
 Release PR staging and publication reconstruction include additional files and their supported lockfiles.
-Default status JSON and metadata-only saved batch fields are unchanged.
+Default status JSON fields are unchanged.
 The public Rust `Package` and `Config` layouts remain supported.
 `load_config()` validates these fields but returns only the primary package view; it does not preserve these options when serialized.
 Do not use that view to round-trip an extended configuration.
@@ -174,5 +174,5 @@ See [Linked version groups](version-groups.md#linked-version-groups) for example
 ## Pause package releases
 
 Use `ignore` to keep selected packages' notes pending without releasing them.
-Ignored packages remain validated, and already saved release batches remain publishable.
+Ignored packages remain validated, and already committed releases remain publishable through their historical configuration.
 See [Pause package releases](version-groups.md#pause-package-releases) for group restrictions and PR-check behavior.

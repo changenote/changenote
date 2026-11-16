@@ -15,6 +15,47 @@ def command(*args):
     return subprocess.check_output(args, text=True).strip()
 
 
+def eligible_note(path):
+    """Match the CLI's top-level note reader without decoding filename bytes."""
+    parts = path.split(b"/")
+    return (
+        len(parts) == 2
+        and parts[0] == b".changenote"
+        and parts[1].endswith(b".md")
+        and not parts[1].startswith(b".")
+        and parts[1].lower()
+        not in (b"readme.md", b"agents.md", b"claude.md", b"gemini.md")
+    )
+
+
+def release_candidate(commit, parent):
+    deleted = subprocess.check_output(
+        ["git", "diff", "--no-renames", "--diff-filter=D", "--name-only", "-z",
+         parent, commit, "--", ".changenote"]
+    )
+    consumed = any(eligible_note(path) for path in deleted.split(b"\0"))
+    changed_batch = bool(command(
+        "git", "diff", "--name-only", parent, commit, "--", BATCH
+    ))
+    if not consumed and not changed_batch:
+        return None
+    entry = command("git", "ls-tree", commit, "--", BATCH).split()
+    if not entry:
+        if not consumed:
+            raise ValueError("Release batch was removed without consumed notes")
+        return {"release": commit, "parent": parent, "file_free": True}
+    if entry[0] != "100644":
+        raise ValueError("Release batch must be a regular file")
+    batch = json.loads(command("git", "show", commit + ":" + BATCH))
+    if (
+        not isinstance(batch, list)
+        or not batch
+        or not all(isinstance(item, dict) for item in batch)
+    ):
+        raise ValueError("Release batch must be a non-empty object array")
+    return {"release": commit, "parent": parent, "file_free": False}
+
+
 def route(event_name, event, repository, ref, base="main"):
     result = {"manage-pr": "false", "publish": "false", "release-commit": ""}
     if ref != f"refs/heads/{base}":
@@ -44,24 +85,14 @@ def route(event_name, event, repository, ref, base="main"):
     result["manage-pr"] = "true"
     release = ""
     for commit in history[: history.index(before)]:
-        changed = command(
-            "git", "diff", "--name-only", commit + "^", commit, "--", BATCH
-        )
-        if changed:
+        parents = command("git", "rev-list", "--parents", "-n", "1", commit).split()
+        if len(parents) < 2:
+            raise ValueError("Release candidates require a parent")
+        if release_candidate(commit, parents[1]) is not None:
             release = commit
             break
     if not release:
         return result
-    entry = command("git", "ls-tree", release, "--", BATCH).split()
-    if not entry or entry[0] != "100644":
-        raise ValueError("Release batch must be a regular file")
-    batch = json.loads(command("git", "show", release + ":" + BATCH))
-    if (
-        not isinstance(batch, list)
-        or not batch
-        or not all(isinstance(item, dict) for item in batch)
-    ):
-        raise ValueError("Release batch must be a non-empty object array")
     pages = json.loads(
         command(
             "gh",

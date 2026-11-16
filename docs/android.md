@@ -69,7 +69,7 @@ appVersionCode=21
   rule. Its version name must match the primary source before release.
 - With no pending release, neither value changes.
 - `init`, `status`, `doctor`, and `check` do not change either value.
-  The default status JSON and saved release fields do not contain the build code.
+  The default release-plan JSON does not contain the build code.
 
 Only the two value tokens change. All other bytes are preserved, including
 comments, property order, unrelated values, spacing, LF or CRLF, and the
@@ -123,7 +123,7 @@ evaluate these overrides or verify APK contents. Review your build separately.
 Use a CLI with this format support for both release generation and replay.
 Older CLIs do not recognize the properties as a structured version source.
 Replay from the same parent state reproduces the same version and code.
-Do not edit saved batches or downgrade a published code to recover a release.
+Do not edit committed release outputs or downgrade a published code to recover a release.
 
 This support does not migrate existing bump scripts or workflows.
 For projects that synchronize Android, backend, and web versions, configure and

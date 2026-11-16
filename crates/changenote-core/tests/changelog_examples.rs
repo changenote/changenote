@@ -86,11 +86,11 @@ fn example_changelogs_have_exact_grouping_and_markdown() {
             expected,
             "{scenario}"
         );
-        let batch = fs::read(dir.path().join(".changenote/releases.json")).unwrap();
+        assert!(!dir.path().join(".changenote/releases.json").exists());
         assert!(changenote::version(dir.path()).unwrap().is_empty());
         assert_eq!(
-            fs::read(dir.path().join(".changenote/releases.json")).unwrap(),
-            batch
+            fs::read_to_string(dir.path().join("CHANGELOG.md")).unwrap(),
+            expected
         );
     }
 }

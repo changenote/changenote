@@ -137,10 +137,7 @@ fn disabled_output_never_uses_stale_changelog_text() {
                 .to_string()
                 .contains("disabled")
         );
-        let saved: Value =
-            serde_json::from_slice(&fs::read(root.join(".changenote/releases.json")).unwrap())
-                .unwrap();
-        assert_eq!(saved[0].as_object().unwrap().len(), 5);
+        assert!(!root.join(".changenote/releases.json").exists());
     }
 }
 

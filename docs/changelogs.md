@@ -56,7 +56,7 @@ changenote status --include-note-types --include-note-sections
 `note_types` aligns with `notes` and uses `null` for untyped notes.
 `note_sections` contains ordered objects with `title` and `notes`; members without direct notes have empty arrays.
 These options work independently of note bump and path options.
-Default status JSON and saved release batches do not change.
+Default status JSON does not change.
 The Rust APIs `add_with_type()` and `add_generated_with_type()` accept an optional type; existing add APIs remain supported.
 `status_with_note_sections()` returns the direct note types and planned sections alongside the existing detailed release.
 `load_config()` validates section configuration but returns only package settings; do not use its return value to round-trip a config with sections.
@@ -99,7 +99,7 @@ The link label uses the first 12 characters; its target uses the full object ID.
 Each rendered note starts with a `Sources:` paragraph, followed by the original summary.
 This keeps links outside fenced or indented code, including an unclosed fence.
 Source attribution runs before `note_template`; native section and list rendering run after it.
-Raw `notes`, note paths, bumps, public Rust layouts, and saved release batches do not change.
+Raw `notes`, note paths, bumps, and public Rust layouts do not change.
 Group-only releases have no fabricated direct sources.
 With `enabled: false`, planned sections still show sources, but changelogs remain unchanged and built-in publication remains unsupported.
 
@@ -144,7 +144,7 @@ Version headings, section headings, and list indentation stay under the native r
 Rendered `note_sections` and Release PR details use the template. Raw `notes`, bumps, and paths do not change.
 Members without direct notes retain their native explanatory message. No JS module, shell hook, formatter, or network lookup is run.
 
-With `"enabled": false`, version files and saved batch metadata still update, and consumed notes are removed, but changelogs are neither created nor changed.
+With `"enabled": false`, version files still update, and consumed notes are removed, but changelogs are neither created nor changed.
 An existing changelog is not a release-body fallback. Local tagging remains supported.
 The built-in publication paths in `/preview`, `/publish`, and `/release` do not support batches generated with changelog output disabled; they fail before remote tag or Release writes.
 This decision uses the selected historical batch's configuration, not later live settings.
@@ -153,4 +153,4 @@ The root Action's custom `publish-script` and `release-script` do not require ch
 Disabling output does not preserve consumed summaries elsewhere.
 Upgrade CLI and all Action pins together before using these controls.
 
-For version calculation, saved batches, and changelog insertion, see [Release behavior](https://github.com/changenote/changenote/blob/main/docs/releases.md).
+For version calculation, release identity, and changelog insertion, see [Release behavior](https://github.com/changenote/changenote/blob/main/docs/releases.md).

@@ -1,7 +1,9 @@
 """Check all release layouts without depending on the live Cargo manifest."""
 
 import json
+import os
 import runpy
+import subprocess
 import tempfile
 import tomllib
 import unittest
@@ -39,17 +41,29 @@ class Prepare(unittest.TestCase):
         )
         (self.root / ".changenote").mkdir()
         self.config({"path": ".", "version_file": source})
-        self.batch([{"package": "changenote", "version": "1.2.3"}])
+        self.batch([{"package": "changenote", "version": "1.2.3", "tag": "v1.2.3"}])
         if source == "VERSION":
             (self.root / "VERSION").write_text("1.2.3\n")
+        self.git("init", "-q")
+        self.git("add", "--", ".")
+        self.git("commit", "-qm", "fixture")
+        self.release_commit = self.git("rev-parse", "HEAD")
 
     def config(self, source):
         (self.root / ".changenote/config.json").write_text(
             json.dumps({"packages": {"changenote": source}})
         )
 
+    def git(self, *args):
+        env = dict(os.environ, GIT_AUTHOR_NAME="Fixture", GIT_COMMITTER_NAME="Fixture",
+                   GIT_AUTHOR_EMAIL="fixture@example.invalid", GIT_COMMITTER_EMAIL="fixture@example.invalid")
+        return subprocess.check_output(["git", "-C", str(self.root), *args], env=env, text=True).strip()
+
     def batch(self, batch):
-        (self.root / ".changenote/releases.json").write_text(json.dumps(batch))
+        self.batch_data = batch
+
+    def prepare(self):
+        return prepare(self.root, self.release_commit, self.batch_data)
 
     def snapshot(self):
         return {
@@ -60,15 +74,41 @@ class Prepare(unittest.TestCase):
     def assert_rejected(self):
         before = self.snapshot()
         with self.assertRaises(ValueError):
-            prepare(self.root)
+            self.prepare()
         self.assertEqual(self.snapshot(), before)
+
+    def test_commit_and_metadata_mismatches_do_not_write(self):
+        self.fixture("crates/changenote/Cargo.toml")
+        for commit in ("not-a-sha", "0" * 40):
+            with self.subTest(commit=commit):
+                self.release_commit = commit
+                self.assert_rejected()
+
+    def test_shallow_file_free_source_needs_no_parent_history(self):
+        self.fixture("crates/changenote/Cargo.toml")
+        original = self.root
+        target = Path(self.enterContext(tempfile.TemporaryDirectory())) / "source"
+        subprocess.run(["git", "clone", "--quiet", "--depth=1", original.as_uri(), str(target)], check=True)
+        self.root = target
+        self.assertEqual(self.git("rev-parse", "--is-shallow-repository"), "true")
+        before = self.snapshot()
+        self.assertEqual(self.prepare(), "1.2.3")
+        self.assertFalse((self.root / ".changenote/releases.json").exists())
+        self.assertEqual(self.snapshot(), before)
+
+    def test_malformed_verified_metadata_does_not_write(self):
+        self.fixture("Cargo.toml")
+        for value in (None, {}, [None], [{}], [{"package": "changenote", "version": "1.2.3", "tag": ""}]):
+            with self.subTest(value=value):
+                self.batch(value)
+                self.assert_rejected()
 
     def test_legacy_only_package_versions_change_and_repeat_is_safe(self):
         self.fixture("VERSION")
         before = self.snapshot()
         original_manifest = tomllib.loads(self.manifest.read_text())
         original_lock = tomllib.loads((self.root / "Cargo.lock").read_text())
-        self.assertEqual(prepare(self.root), "1.2.3")
+        self.assertEqual(self.prepare(), "1.2.3")
         original_manifest["package"]["version"] = "1.2.3"
         original_lock["package"][0]["version"] = "1.2.3"
         self.assertEqual(tomllib.loads(self.manifest.read_text()), original_manifest)
@@ -79,7 +119,7 @@ class Prepare(unittest.TestCase):
             if name not in ("Cargo.toml", "Cargo.lock"):
                 self.assertEqual((self.root / name).read_bytes(), content)
         first = self.snapshot()
-        self.assertEqual(prepare(self.root), "1.2.3")
+        self.assertEqual(self.prepare(), "1.2.3")
         self.assertEqual(self.snapshot(), first)
 
     def test_cargo_sources_without_version_file_are_read_only(self):
@@ -87,8 +127,8 @@ class Prepare(unittest.TestCase):
             with self.subTest(source=source):
                 self.fixture(source)
                 before = self.snapshot()
-                self.assertEqual(prepare(self.root), "1.2.3")
-                self.assertEqual(prepare(self.root), "1.2.3")
+                self.assertEqual(self.prepare(), "1.2.3")
+                self.assertEqual(self.prepare(), "1.2.3")
                 self.assertEqual(self.snapshot(), before)
                 self.assertFalse((self.root / "VERSION").exists())
 

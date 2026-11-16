@@ -28,7 +28,7 @@ fn note(root: &Path) {
     .unwrap();
 }
 
-fn git(root: &Path, args: &[&str]) {
+fn git(root: &Path, args: &[&str]) -> String {
     let output = Command::new("git")
         .current_dir(root)
         .env("GIT_AUTHOR_NAME", "Test")
@@ -43,6 +43,7 @@ fn git(root: &Path, args: &[&str]) {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    String::from_utf8(output.stdout).unwrap().trim().to_owned()
 }
 
 #[test]
@@ -182,6 +183,8 @@ fn tag_validates_manifest_version() {
     let dir = project("Cargo.toml", "[package]\nversion = '1.2.3'\n");
     git(dir.path(), &["init", "--initial-branch=main"]);
     note(dir.path());
+    git(dir.path(), &["add", "--", "."]);
+    git(dir.path(), &["commit", "-m", "parent"]);
     changenote::version(dir.path()).unwrap();
     git(
         dir.path(),
@@ -208,6 +211,9 @@ fn tag_validates_manifest_version() {
     .unwrap();
     git(dir.path(), &["add", "Cargo.toml"]);
     git(dir.path(), &["commit", "-m", "chore: change version"]);
-    let error = changenote::tag(dir.path()).unwrap_err().to_string();
-    assert!(error.contains("release version does not match version file"));
+    assert!(changenote::tag(dir.path()).unwrap().is_empty());
+    assert_eq!(
+        git(dir.path(), &["rev-parse", "v1.3.0^{commit}"]),
+        git(dir.path(), &["rev-parse", "HEAD^"])
+    );
 }

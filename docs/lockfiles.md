@@ -100,7 +100,7 @@ pnpm does not record package versions, and Bun does not record the root package 
 `status`, `add`, `doctor`, and a `version` run without pending notes do not run package managers.
 
 If a command is missing or fails, the CLI attempts to restore all known release files.
-This includes manifests, lockfiles, changelogs, saved release data, and consumed notes.
+This includes manifests, lockfiles, changelogs, legacy batch deletions, and consumed notes.
 The same recovery applies to later write or note-deletion errors.
 See [Release-write recovery](releases.md#release-write-recovery) for the limits.
 Review all outputs before committing.

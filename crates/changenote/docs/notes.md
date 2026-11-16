@@ -178,7 +178,7 @@ changenote add -p pkg-a --bump minor -m "Add an API"
 
 `--include-note-paths` adds repository-relative `note_paths` with forward slashes, aligned with direct `notes`.
 Notes with identical summaries keep their separate paths.
-The option is independent of `--include-note-bumps`; default status JSON and saved batch fields do not change.
+The option is independent of `--include-note-bumps`; default status JSON does not change.
 Notes are ordered by filename, not creation time.
 These commands require no Git history and status writes no files.
 Detailed JSON requires UTF-8 note filenames; default status still supports other filenames.
@@ -251,4 +251,4 @@ Use `changelog.note_template` to add a bounded metadata line to each generated n
 Use `changelog.enabled` to control changelog writes; disabling output consumes notes without preserving their summaries and is not supported by built-in GitHub publication.
 See [Output controls and native templates](https://github.com/changenote/changenote/blob/main/docs/changelogs.md#changelog-output-controls-and-native-templates) for syntax, defaults, and publication limits.
 
-For version calculation, saved batches, and changelog insertion, see [Release behavior](https://github.com/changenote/changenote/blob/main/docs/releases.md).
+For version calculation, release identity, and changelog insertion, see [Release behavior](https://github.com/changenote/changenote/blob/main/docs/releases.md).
