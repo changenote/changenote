@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-ACTION_REVISION = "ce215cfb2c5314780c3cd0b86ec3c89f70c55468"
+ACTION_REVISION = "9323bb6f0a1dfdae6124649e69bc90a990aab20c"
 ACTION_MANAGE_PR = "changenote/action/manage-pr@" + ACTION_REVISION
 ACTION_INSPECT = "changenote/action/inspect@" + ACTION_REVISION
 ACTION_PUBLISH = "changenote/action/publish@" + ACTION_REVISION

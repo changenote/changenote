@@ -92,6 +92,128 @@ fn file_free_release_targets_its_commit_after_later_configuration_changes() {
 }
 
 #[test]
+fn note_only_retractions_and_renames_preserve_the_last_release() {
+    for saved in [false, true] {
+        for change in ["remove", "rename", "paused"] {
+            let dir = fixture();
+            let root = dir.path();
+            let releases = changenote::version(root).unwrap();
+            if saved {
+                save_batch(root, &releases);
+            }
+            let released = commit(root);
+            add(root, "pending");
+            if change == "paused" {
+                let path = root.join(".changenote/config.json");
+                let mut config: serde_json::Value =
+                    serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+                config["ignore"] = json!(["pkg"]);
+                fs::write(path, config.to_string()).unwrap();
+            }
+            commit(root);
+            let pending = root.join(".changenote/pending.md");
+            if change == "rename" {
+                fs::rename(pending, root.join(".changenote/renamed.md")).unwrap();
+            } else {
+                fs::remove_file(pending).unwrap();
+            }
+            commit(root);
+            assert_eq!(tag(root).unwrap(), ["v1.2.4"], "{saved} {change}");
+            assert_eq!(git(root, &["rev-parse", "v1.2.4^{commit}"]), released);
+            assert!(tag(root).unwrap().is_empty());
+            assert_eq!(fs::read_to_string(root.join("VERSION")).unwrap(), "1.2.4\n");
+            assert_eq!(
+                root.join(".changenote/renamed.md").exists(),
+                change == "rename"
+            );
+        }
+    }
+}
+
+#[test]
+fn additional_version_file_changes_are_not_skipped_as_note_maintenance() {
+    let dir = fixture();
+    let root = dir.path();
+    fs::write(root.join("MIRROR"), "1.2.3\n").unwrap();
+    let path = root.join(".changenote/config.json");
+    let mut config: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    config["packages"]["pkg"]["version_outputs"] = json!(["MIRROR"]);
+    fs::write(path, config.to_string()).unwrap();
+    commit(root);
+    changenote::version(root).unwrap();
+    commit(root);
+    add(root, "pending");
+    commit(root);
+    fs::remove_file(root.join(".changenote/pending.md")).unwrap();
+    fs::write(root.join("MIRROR"), "9.0.0\n").unwrap();
+    commit(root);
+    assert!(
+        tag(root)
+            .unwrap_err()
+            .contains("version output does not match primary version")
+    );
+    assert!(git(root, &["tag", "--list"]).is_empty());
+}
+
+#[test]
+fn documented_go_staging_includes_legacy_batch_deletions() {
+    for legacy in [false, true] {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        changenote::init(root, "pkg", Version::new(1, 2, 0)).unwrap();
+        git(root, &["init", "-q"]);
+        fs::create_dir_all(root.join("sdk/v2")).unwrap();
+        fs::write(root.join("sdk/v2/VERSION"), "2.2.0\n").unwrap();
+        fs::write(
+            root.join(".changenote/config.json"),
+            json!({"packages": {
+                "pkg": {"path": ".", "version_file": "VERSION", "tag_prefix": "v"},
+                "sdk": {"path": "sdk/v2", "version_file": "VERSION", "tag_prefix": "sdk/v"}
+            }})
+            .to_string(),
+        )
+        .unwrap();
+        changenote::add(
+            root,
+            "fix-api",
+            vec!["pkg".into(), "sdk".into()],
+            Bump::Patch,
+            "Fix API error handling.",
+        )
+        .unwrap();
+        if legacy {
+            fs::write(root.join(".changenote/releases.json"), "[]\n").unwrap();
+        }
+        commit(root);
+        changenote::version(root).unwrap();
+        git(
+            root,
+            &[
+                "add",
+                "--",
+                ".changenote/fix-api.md",
+                "VERSION",
+                "CHANGELOG.md",
+                "sdk/v2/VERSION",
+                "sdk/v2/CHANGELOG.md",
+            ],
+        );
+        git(root, &["add", "-u", "--", ".changenote"]);
+        git(root, &["commit", "-qm", "fixture"]);
+        let released = git(root, &["rev-parse", "HEAD"]);
+        assert!(git(root, &["status", "--porcelain"]).is_empty());
+        assert_eq!(tag(root).unwrap(), ["v1.2.1", "sdk/v2.2.1"]);
+        for tag in ["v1.2.1", "sdk/v2.2.1"] {
+            assert_eq!(
+                git(root, &["rev-parse", &format!("{tag}^{{commit}}")]),
+                released
+            );
+        }
+        assert!(!root.join(".changenote/releases.json").exists());
+    }
+}
+
+#[test]
 fn historical_metadata_batches_remain_valid_and_tampering_is_rejected() {
     for tamper in [false, true] {
         let dir = fixture();
@@ -173,7 +295,7 @@ fn fixed_group_members_are_included_but_unrelated_packages_are_not() {
 
 #[test]
 fn malformed_newest_candidate_does_not_fall_back_to_an_older_release() {
-    for changed_version in [false, true] {
+    for invalid_version in ["1.2.3\n", "9.0.0\n"] {
         let dir = fixture();
         let root = dir.path();
         changenote::version(root).unwrap();
@@ -181,9 +303,7 @@ fn malformed_newest_candidate_does_not_fall_back_to_an_older_release() {
         add(root, "bad");
         commit(root);
         fs::remove_file(root.join(".changenote/bad.md")).unwrap();
-        if changed_version {
-            fs::write(root.join("VERSION"), "9.0.0\n").unwrap();
-        }
+        fs::write(root.join("VERSION"), invalid_version).unwrap();
         commit(root);
         assert!(
             tag(root)

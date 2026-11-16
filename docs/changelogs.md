@@ -146,9 +146,11 @@ Members without direct notes retain their native explanatory message. No JS modu
 
 With `"enabled": false`, version files still update, and consumed notes are removed, but changelogs are neither created nor changed.
 An existing changelog is not a release-body fallback. Local tagging remains supported.
-The built-in publication paths in `/preview`, `/publish`, and `/release` do not support batches generated with changelog output disabled; they fail before remote tag or Release writes.
+The `/inspect` and `/publish` Actions require changelog output.
+The root Action requires it when `create-github-releases` is enabled.
+Unsupported batches fail before remote tag or Release writes.
 This decision uses the selected historical batch's configuration, not later live settings.
-Keep changelogs enabled for built-in GitHub publication.
+Keep changelogs enabled for built-in GitHub Release publication.
 The root Action's custom `publish-script` and `release-script` do not require changelog output.
 Disabling output does not preserve consumed summaries elsewhere.
 Upgrade CLI and all Action pins together before using these controls.

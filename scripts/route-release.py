@@ -2,7 +2,7 @@
 
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import subprocess
 import sys
@@ -28,6 +28,23 @@ def eligible_note(path):
     )
 
 
+def version_sources_changed(commit, parent):
+    config = json.loads(command("git", "show", parent + ":.changenote/config.json"))
+    files = []
+    for package in config["packages"].values():
+        for source in (package["version_file"], *package.get("version_outputs", [])):
+            path = PurePosixPath(package["path"], source)
+            if path.is_absolute() or ".." in path.parts or not path.parts:
+                raise ValueError("Version sources must be relative file paths")
+            files.append(str(path))
+    if not files:
+        raise ValueError("Release configuration has no version sources")
+    return bool(subprocess.check_output([
+        "git", "--literal-pathspecs", "diff", "--name-only", "-z",
+        parent, commit, "--", *files,
+    ]))
+
+
 def release_candidate(commit, parent):
     deleted = subprocess.check_output(
         ["git", "diff", "--no-renames", "--diff-filter=D", "--name-only", "-z",
@@ -38,6 +55,8 @@ def release_candidate(commit, parent):
         "git", "diff", "--name-only", parent, commit, "--", BATCH
     ))
     if not consumed and not changed_batch:
+        return None
+    if not changed_batch and not version_sources_changed(commit, parent):
         return None
     entry = command("git", "ls-tree", commit, "--", BATCH).split()
     if not entry:

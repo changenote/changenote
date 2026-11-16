@@ -86,6 +86,8 @@ It does not push tags, publish artifacts, or run package managers.
 
 Historical configuration selects package paths and tag prefixes.
 Fixed-group members are included by the plan, not by checking for missing tags.
+A note-only retraction or rename is not a release candidate.
+A file-free candidate must also change a configured primary or additional version file.
 A malformed newest candidate stops tagging instead of falling back to an older release.
 Shallow history and releases without verifiable parent inputs are rejected.
 

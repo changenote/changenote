@@ -40,7 +40,7 @@ See the [migration procedure](https://github.com/changenote/action/blob/main/doc
 The repository's `.github/workflows/release.yml` only manages the Release PR on ordinary pushes to `main`, even when an older release batch exists.
 Automatic publication requires:
 
-- A new first-parent release candidate in the push range: consumed eligible notes, or a historical saved-batch change.
+- A new first-parent release candidate in the push range: consumed eligible notes with a configured version-file change, or a historical saved-batch change.
 - Exactly one associated merged managed PR with all these properties:
     - The reserved head branch: `changenote-release/main`, or the previous `narumi/chore/changenote-release-main` name for older pinned Actions.
     - The repository's `main` base and the managed body marker.

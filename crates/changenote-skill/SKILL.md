@@ -199,7 +199,9 @@ If writes fail, stop and inspect partial changes before retrying; do not automat
 
 For an authorized tag operation, require a clean working tree, complete Git history, and notes committed before the release, then run `uvx changenote tag`.
 The command derives the newest release from consumed notes and matching historical version sources.
-It targets that release commit, not a later unrelated `HEAD`; malformed newest candidates fail instead of selecting older releases.
+It targets that release commit, not a later unrelated `HEAD`.
+Note-only retractions and renames are not release candidates; file-free candidates must also change a configured version file.
+Malformed newest candidates fail instead of selecting older releases.
 Do not infer release membership from missing tags.
 By default, one configured package uses `v<version>`; two or more use `changenote/<package>@v<version>`.
 Default tag format depends on the number of historically configured packages, not the number changed.
@@ -334,7 +336,7 @@ jobs:
 
 Keep tests, builds, and registry publication in `publish-script` when its verified-merge execution satisfies the requested workflow.
 Root scripts require a new first-parent release candidate and exactly one associated merged managed PR in the triggering push range.
-New candidates consume eligible notes; historical candidates can change a saved batch.
+New candidates consume eligible notes and change a configured version file; historical candidates can change a saved batch.
 Routing alone does not authorize execution: the Action must reconstruct and verify the complete release tree first.
 Verify the reserved same-repository head branch, selected base, body marker, and matching merge commit; titles and commit messages are not authority.
 The execution order is `publish-script`, enabled built-in tags and Releases, then `release-script`; a failure prevents later steps without undoing earlier writes.

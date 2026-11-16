@@ -152,6 +152,27 @@ fn snapshot(root: &Path, commit: &str, target: &Path) -> Result<config::ReleaseC
     config::load_release_config(target)
 }
 
+fn version_sources_changed(
+    root: &Path,
+    parent: &str,
+    commit: &str,
+    config: &config::ReleaseConfig,
+) -> Result<bool> {
+    let mut files = Vec::new();
+    for (name, package) in &config.config.packages {
+        for file in std::iter::once(&package.version_file)
+            .chain(&config.package_options[name].version_outputs)
+        {
+            files.push(package.path.join(file));
+        }
+    }
+    let mut args = ["diff", "--name-only", "-z", parent, commit, "--"]
+        .map(OsStr::new)
+        .to_vec();
+    args.extend(files.iter().map(|file| file.as_os_str()));
+    Ok(!git(root, &args)?.is_empty())
+}
+
 /// Find the newest candidate, then validate it. Never fall back after validation fails.
 pub(crate) fn discover(root: &Path) -> Result<(String, Vec<release::Release>)> {
     ensure!(
@@ -202,6 +223,9 @@ pub(crate) fn discover(root: &Path) -> Result<(String, Vec<release::Release>)> {
         let before = tempfile::tempdir()?;
         let before_root = before.path().canonicalize()?;
         let config = snapshot(root, parent, &before_root)?;
+        if !changed_batch && !version_sources_changed(root, parent, commit, &config)? {
+            continue;
+        }
         let entries = git(
             root,
             &[

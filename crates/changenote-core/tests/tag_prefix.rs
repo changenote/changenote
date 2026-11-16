@@ -230,7 +230,7 @@ fn tag_namespace_conflicts_fail_before_version_writes() {
 }
 
 #[test]
-fn saved_tag_namespace_conflicts_fail_before_any_tag_creation() {
+fn saved_tag_edit_fails_parent_plan_comparison_before_any_tag_creation() {
     let dir = two_packages("other/v");
     let root = dir.path();
     git(root, &["init", "-q"]);
@@ -258,21 +258,30 @@ fn saved_tag_namespace_conflicts_fail_before_any_tag_creation() {
 
 #[test]
 fn existing_tag_namespaces_fail_preflight_without_creating_tags() {
-    for existing in ["sdk", "sdk/v1.2.4/child"] {
-        let dir = fixture(Some(json!("sdk/v")));
-        let root = dir.path();
-        git(root, &["init", "-q"]);
-        commit(root);
-        changenote::version(root).unwrap();
-        commit(root);
-        git(root, &["tag", existing]);
-        assert!(
-            changenote::tag(root)
-                .unwrap_err()
-                .to_string()
-                .contains("namespace conflicts")
-        );
-        assert_eq!(git(root, &["tag", "--list"]), existing);
+    for saved in [false, true] {
+        for existing in ["sdk", "sdk/v1.2.4/child"] {
+            let dir = fixture(Some(json!("sdk/v")));
+            let root = dir.path();
+            git(root, &["init", "-q"]);
+            commit(root);
+            let mut batch = serde_json::to_value(changenote::version(root).unwrap()).unwrap();
+            if saved {
+                for entry in batch.as_array_mut().unwrap() {
+                    entry.as_object_mut().unwrap().remove("notes");
+                }
+                fs::write(root.join(".changenote/releases.json"), batch.to_string()).unwrap();
+            }
+            commit(root);
+            git(root, &["tag", existing]);
+            assert!(
+                changenote::tag(root)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("namespace conflicts"),
+                "{saved} {existing}"
+            );
+            assert_eq!(git(root, &["tag", "--list"]), existing);
+        }
     }
 }
 
@@ -296,7 +305,11 @@ fn saved_tags_must_match_prefix_and_cannot_be_duplicated() {
         }
         fs::write(path, saved.to_string()).unwrap();
         commit(root);
-        assert!(changenote::tag(root).is_err());
+        assert_eq!(
+            changenote::tag(root).unwrap_err().to_string(),
+            "saved batch does not match the parent release plan",
+            "{invalid}"
+        );
         assert_eq!(git(root, &["tag", "--list"]), "");
     }
 }

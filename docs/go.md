@@ -91,10 +91,11 @@ git status --short
 
 Review both version files, both changelogs, and the deleted note. `go.mod`, `go.sum`, `go.work`, source files, and dependency requirements must remain unchanged by changenote. It does not run `go mod tidy`, install dependencies, or download modules.
 
-Stage only release outputs and the consumed note, then commit:
+Stage the release outputs, the consumed note, and any tracked legacy batch deletion, then commit:
 
 ```sh
 git add -- .changenote/fix-api.md VERSION CHANGELOG.md sdk/v2/VERSION sdk/v2/CHANGELOG.md
+git add -u -- .changenote
 git commit -m "chore(release): version Go modules"
 changenote tag
 ```
