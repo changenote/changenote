@@ -67,7 +67,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: changenote/action
-          ref: df3bc0cfaa30fe42a542d663e6ea986bd6dcb8db
+          ref: ce215cfb2c5314780c3cd0b86ec3c89f70c55468
           path: .verifications/action-compatibility
           persist-credentials: false
       - name: Verify Action compatibility with the built wheel

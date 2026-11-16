@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-ACTION_REVISION = "df3bc0cfaa30fe42a542d663e6ea986bd6dcb8db"
+ACTION_REVISION = "ce215cfb2c5314780c3cd0b86ec3c89f70c55468"
 ACTION_MANAGE_PR = "changenote/action/manage-pr@" + ACTION_REVISION
 ACTION_INSPECT = "changenote/action/inspect@" + ACTION_REVISION
 ACTION_PUBLISH = "changenote/action/publish@" + ACTION_REVISION
@@ -174,6 +174,17 @@ class Metadata(unittest.TestCase):
             "uvx --isolated --no-index --find-links dist/python-binary changenote --help",
         ):
             self.assertIn(gate, distribution)
+
+    def test_build_preparation_uses_verified_commit_and_package_metadata(self):
+        jobs = read_yaml(ROOT / ".github/workflows/release.yml")["jobs"]
+        self.assertEqual(jobs["publish"]["outputs"]["releases"], "${{ steps.publish.outputs.releases }}")
+        for name in ("crates-io", "wheels"):
+            prepare = next(step for step in jobs[name]["steps"] if step.get("name") == "Set release build version")
+            self.assertEqual(prepare["env"], {
+                "EXPECTED_RELEASE_COMMIT": "${{ needs.publish.outputs.release-commit }}",
+                "CHANGENOTE_RELEASES": "${{ needs.publish.outputs.releases }}",
+            })
+            self.assertIn("workflow/scripts/prepare-python-release.py source", prepare["run"])
 
     def test_ci_checks_source_archive_with_release_builder(self):
         ci = read_yaml(ROOT / ".github/workflows/ci.yml")["jobs"]["python"]
