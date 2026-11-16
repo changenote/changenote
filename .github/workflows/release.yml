@@ -68,8 +68,7 @@ jobs:
           cargo test --locked
           cargo build --locked --release
           echo "$GITHUB_WORKSPACE/target/release" >> "$GITHUB_PATH"
-      # Merge the companion file-free Action support before activating this workflow.
-      - uses: changenote/action/manage-pr@9323bb6f0a1dfdae6124649e69bc90a990aab20c
+      - uses: changenote/action/manage-pr@b5a808ce21642ccc01587dc66fd34ce522b74da9 # v0.4.0
         with:
           base-branch: main
           cli-path: ${{ github.workspace }}/target/release/changenote
@@ -103,7 +102,7 @@ jobs:
           cargo build --locked --release
           echo "$GITHUB_WORKSPACE/target/release" >> "$GITHUB_PATH"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-      - uses: changenote/action/inspect@9323bb6f0a1dfdae6124649e69bc90a990aab20c
+      - uses: changenote/action/inspect@b5a808ce21642ccc01587dc66fd34ce522b74da9 # v0.4.0
         id: preview
         with:
           base-branch: main
@@ -119,7 +118,7 @@ jobs:
       - name: Publish selected batch
         id: publish
         if: steps.preview.outputs.release-commit != ''
-        uses: changenote/action/publish@9323bb6f0a1dfdae6124649e69bc90a990aab20c
+        uses: changenote/action/publish@b5a808ce21642ccc01587dc66fd34ce522b74da9 # v0.4.0
         with:
           base-branch: main
           expected-release-commit: ${{ steps.preview.outputs.release-commit }}
