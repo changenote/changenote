@@ -1,3 +1,17 @@
+## 0.15.0
+
+### Minor Changes
+
+- Sources: [a8bb62642de3](https://github.com/changenote/changenote/commit/a8bb62642de3c39c0f07e563ea1ec8915d13b3d4)
+  
+  Remove `.changenote/releases.json` from new releases.
+  Breaking change: file readers must use verified Action `release-commit` and `releases` outputs.
+  Upgrade the Action before enabling this CLI.
+  The first nonempty `version` run removes the legacy file; failed writes use the existing best-effort recovery.
+  Local `tag` requires complete history and targets the release commit, not a later `HEAD`.
+  Later note-only retractions and renames do not replace that release candidate.
+  Keep compatible new tooling for file-free publication retries.
+
 ## 0.14.1
 
 ### Patch Changes
