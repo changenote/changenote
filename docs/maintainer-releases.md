@@ -101,11 +101,11 @@ This routing policy is repository-specific.
 
 ## File-free release rollout
 
-This CLI change depends on [Action PR #17](https://github.com/changenote/action/pull/17).
-The workflow and compatibility tests pin its exact candidate SHA; merge and review the compatible Action before activating the CLI workflow on `main`.
+The workflow and compatibility tests pin the `changenote/action` v0.4.0 release commit, which includes [Action PR #17](https://github.com/changenote/action/pull/17).
+The exact Action SHA is recorded in `.github/workflows/ci.yml` and `.github/workflows/release.yml`.
 The implementation PR does not authorize a release workflow dispatch, version tag, registry upload, or external consumer pin update.
 
-1. The Action maintainer must merge compatible support and confirm its complete PR CI results with the published CLI.
+1. The Action maintainer must confirm the compatible Action's complete CI results with the published CLI.
 2. The CLI maintainer must confirm the pinned Action's complete tests against the wheel built from this CLI revision.
 3. The repository release owner must review the exact Action SHA and the `/manage-pr`, `/inspect`, `/publish`, and trusted `cli-path` wiring before activation.
 4. Consumer maintainers, including `changenote/example`, must migrate batch-file readers to verified metadata and update their reviewed pins separately.
